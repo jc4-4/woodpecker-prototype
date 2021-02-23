@@ -1,4 +1,3 @@
-
 #[cfg(test)]
 mod tests {
     use rusoto_core::Region;

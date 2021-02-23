@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package woodpecker.protobuf;
+
+option java_multiple_files = true;
+option java_package = "org.woodpecker.protobuf";
+option java_outer_classname = "WoodpeckerProto";
+
+service AgentService {
+  rpc GetAgentConfig (GetAgentConfigRequest) returns (GetAgentConfigResponse);
+  rpc GetDestinations (GetDestinationsRequest) returns (GetDestinationsResponse);
+}
+
+message GetAgentConfigRequest {
+}
+
+message GetAgentConfigResponse {
+}
+
+message GetDestinationsRequest {
+}
+
+message GetDestinationsResponse {
+  repeated string destinations = 1;
+}
+
