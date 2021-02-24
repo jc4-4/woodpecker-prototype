@@ -7,8 +7,8 @@ option java_package = "org.woodpecker.protobuf";
 option java_outer_classname = "WoodpeckerProto";
 
 service AgentService {
-  rpc GetAgentConfig (GetAgentConfigRequest) returns (GetAgentConfigResponse);
-  rpc GetDestinations (GetDestinationsRequest) returns (GetDestinationsResponse);
+  rpc GetAgentConfig(GetAgentConfigRequest) returns (GetAgentConfigResponse);
+  rpc GetDestinations(stream GetDestinationsRequest) returns (stream GetDestinationsResponse);
 }
 
 message GetAgentConfigRequest {
