@@ -1,3 +1,5 @@
+mod agent_service;
+
 use futures::stream::Stream;
 use tonic::{transport::Server, Request, Response, Status, Streaming};
 
