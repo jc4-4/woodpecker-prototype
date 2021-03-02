@@ -2,12 +2,11 @@ use rusoto_core::{Region, RusotoError};
 use rusoto_credential::AwsCredentials;
 use rusoto_s3::util::{PreSignedRequest, PreSignedRequestOption};
 use rusoto_s3::PutObjectRequest;
-use rusoto_sqs::{
-    GetQueueUrlRequest, SendMessageError, SendMessageRequest, SendMessageResult, Sqs, SqsClient,
-};
+use rusoto_sqs::{SendMessageError, SendMessageRequest, Sqs, SqsClient};
 use uuid::Uuid;
 
 type Key = String;
+
 pub struct Service {
     bucket: String,
     queue_url: String,

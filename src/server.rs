@@ -1,17 +1,19 @@
-mod agent_service;
+use std::pin::Pin;
 
 use futures::stream::Stream;
 use tonic::{transport::Server, Request, Response, Status, Streaming};
-
-pub mod protobuf {
-    include!(concat!(env!("OUT_DIR"), "/woodpecker.protobuf.rs"));
-}
 
 use protobuf::agent_service_server::{AgentService, AgentServiceServer};
 use protobuf::{
     GetAgentConfigRequest, GetAgentConfigResponse, GetDestinationsRequest, GetDestinationsResponse,
 };
-use std::pin::Pin;
+
+mod agent_service;
+mod functional_test;
+
+pub mod protobuf {
+    include!(concat!(env!("OUT_DIR"), "/woodpecker.protobuf.rs"));
+}
 
 #[derive(Debug, Default)]
 pub struct WoodpeckerAgentService {}
