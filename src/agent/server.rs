@@ -60,10 +60,9 @@ pub async fn main() -> Result<(), tonic::transport::Error> {
 
 #[cfg(test)]
 mod tests {
-    use super::WoodpeckerAgentService;
+
     use prototype::agent::protobuf::{
-        agent_service_client::AgentServiceClient, agent_service_server::AgentServiceServer,
-        GetDestinationsRequest,
+        agent_service_client::AgentServiceClient, GetDestinationsRequest,
     };
     use tokio::task;
 
