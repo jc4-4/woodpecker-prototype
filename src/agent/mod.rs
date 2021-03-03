@@ -5,6 +5,11 @@ use rusoto_s3::PutObjectRequest;
 use rusoto_sqs::{SendMessageError, SendMessageRequest, Sqs, SqsClient};
 use uuid::Uuid;
 
+pub mod protobuf {
+    include!(concat!(env!("OUT_DIR"), "/woodpecker.protobuf.rs"));
+}
+// mod functional_test;
+
 type Key = String;
 
 pub struct Service {
@@ -66,11 +71,12 @@ impl Service {
 
 #[cfg(test)]
 mod tests {
-    use super::Service;
     use rusoto_core::Region;
     use rusoto_sqs::{
         CreateQueueRequest, DeleteQueueRequest, ReceiveMessageRequest, Sqs, SqsClient,
     };
+
+    use super::Service;
 
     fn service(queue_url: String) -> Service {
         Service::new(

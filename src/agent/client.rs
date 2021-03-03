@@ -1,12 +1,8 @@
-pub mod protobuf {
-    include!(concat!(env!("OUT_DIR"), "/woodpecker.protobuf.rs"));
-}
-
 use tonic::Streaming;
 
-use protobuf::agent_service_client::AgentServiceClient;
-use protobuf::{
-    GetAgentConfigRequest, GetAgentConfigResponse, GetDestinationsRequest, GetDestinationsResponse,
+use prototype::agent::protobuf::{
+    agent_service_client::AgentServiceClient, GetAgentConfigRequest, GetAgentConfigResponse,
+    GetDestinationsRequest, GetDestinationsResponse,
 };
 
 #[tokio::main]
