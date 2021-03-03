@@ -42,16 +42,20 @@ impl AgentService for WoodpeckerAgentService {
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+// Refactor this out of main to avoid nested tokio runtime when running test.
+async fn serve() -> Result<(), tonic::transport::Error> {
     let addr = "[::1]:50051".parse().unwrap();
     let service = WoodpeckerAgentService::default();
     println!("Server listening on {}", addr);
     Server::builder()
         .add_service(AgentServiceServer::new(service))
         .serve(addr)
-        .await?;
-    Ok(())
+        .await
+}
+
+#[tokio::main]
+pub async fn main() -> Result<(), tonic::transport::Error> {
+    serve().await
 }
 
 #[cfg(test)]
@@ -66,19 +70,10 @@ mod tests {
     // Use multi_thread to have server on a separate thread.
     #[tokio::test(flavor = "multi_thread")]
     async fn grpc_roundtrip() {
-        let task = task::spawn_blocking(|| async {
-            let addr = "[::1]:50051".parse().unwrap();
-            let service = WoodpeckerAgentService::default();
-            println!("Server listening on {}", addr);
-            tonic::transport::Server::builder()
-                .add_service(AgentServiceServer::new(service))
-                .serve(addr)
-                .await?;
-            Ok::<(), tonic::transport::Error>(())
-        })
-        .await
-        .unwrap();
-        let _server = task::spawn(task);
+        let t = task::spawn_blocking(|| async { super::serve().await })
+            .await
+            .unwrap();
+        let _s = task::spawn(t);
 
         let mut client = AgentServiceClient::connect("http://[::1]:50051")
             .await
