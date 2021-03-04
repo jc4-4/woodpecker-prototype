@@ -113,7 +113,8 @@ mod tests {
     }
 
     async fn receive_message(repository: &KeyRepository) -> Vec<String> {
-        let res = repository.sqs_client
+        let res = repository
+            .sqs_client
             .receive_message(ReceiveMessageRequest {
                 queue_url: repository.queue_url.clone(),
                 ..Default::default()
@@ -128,7 +129,8 @@ mod tests {
     }
 
     async fn delete_queue(repository: &KeyRepository) -> () {
-        repository.sqs_client
+        repository
+            .sqs_client
             .delete_queue(DeleteQueueRequest {
                 queue_url: repository.queue_url.clone(),
                 ..Default::default()
@@ -155,7 +157,9 @@ mod tests {
     #[tokio::test]
     async fn roundtrip() {
         let repository = KeyRepository::default();
-        create_queue(&repository).await.expect("Failed to create queue: ");
+        create_queue(&repository)
+            .await
+            .expect("Failed to create queue: ");
 
         let keys = repository.produce(1).await;
         repository.consume(keys[0].clone()).await.unwrap();

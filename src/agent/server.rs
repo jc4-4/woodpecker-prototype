@@ -5,10 +5,11 @@ use tonic::{transport::Server, Request, Response, Status, Streaming};
 
 use prototype::agent::protobuf::{
     agent_service_server::{AgentService, AgentServiceServer},
+    CreateKeysRequest, CreateKeysResponse, DeleteKeysRequest, DeleteKeysResponse,
     GetAgentConfigRequest, GetAgentConfigResponse, GetDestinationsRequest, GetDestinationsResponse,
 };
 
-#[derive(Debug, Default)]
+#[derive(Clone, Default)]
 pub struct WoodpeckerAgentService {}
 
 #[tonic::async_trait]
@@ -40,6 +41,20 @@ impl AgentService for WoodpeckerAgentService {
         };
         Ok(Response::new(Box::pin(output)))
     }
+
+    async fn create_keys(
+        &self,
+        _request: Request<CreateKeysRequest>,
+    ) -> Result<Response<CreateKeysResponse>, Status> {
+        Ok(Response::new(CreateKeysResponse { keys: vec![] }))
+    }
+
+    async fn delete_keys(
+        &self,
+        _request: Request<DeleteKeysRequest>,
+    ) -> Result<Response<DeleteKeysResponse>, Status> {
+        Ok(Response::new(DeleteKeysResponse {}))
+    }
 }
 
 // Refactor this out of main to avoid nested tokio runtime when running test.
@@ -59,24 +74,30 @@ pub async fn main() -> Result<(), tonic::transport::Error> {
 }
 
 #[cfg(test)]
-mod tests {
-
+mod functional_test {
     use prototype::agent::protobuf::{
-        agent_service_client::AgentServiceClient, GetDestinationsRequest,
+        agent_service_client::AgentServiceClient, CreateKeysRequest, CreateKeysResponse,
+        DeleteKeysRequest, DeleteKeysResponse, GetDestinationsRequest,
     };
     use tokio::task;
+    use tonic::transport::Channel;
+    use tonic::Response;
+
+    async fn client() -> AgentServiceClient<Channel> {
+        AgentServiceClient::connect("http://[::1]:50051")
+            .await
+            .expect("Client fails to connect: ")
+    }
 
     // Use multi_thread to have server on a separate thread.
     #[tokio::test(flavor = "multi_thread")]
-    async fn grpc_roundtrip() {
+    async fn get_destinations_roundtrip() {
         let t = task::spawn_blocking(|| async { super::serve().await })
             .await
             .unwrap();
         let _s = task::spawn(t);
 
-        let mut client = AgentServiceClient::connect("http://[::1]:50051")
-            .await
-            .unwrap();
+        let mut client = client().await;
         let outbound1 = async_stream::stream! {
             yield GetDestinationsRequest {};
         };
@@ -93,5 +114,27 @@ mod tests {
             assert_eq!(vec!["1"], r.destinations);
         }
         assert_eq!(1, i);
+    }
+
+    // Use multi_thread to have server on a separate thread.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn create_delete_keys_roundtrip() {
+        let t = task::spawn_blocking(|| async { super::serve().await })
+            .await
+            .unwrap();
+        let _s = task::spawn(t);
+
+        let mut client = client().await;
+
+        let res: Response<CreateKeysResponse> =
+            client.create_keys(CreateKeysRequest {}).await.unwrap();
+        let keys = res.into_inner().keys;
+        assert!(keys.is_empty());
+
+        let _res: Response<DeleteKeysResponse> = client
+            .delete_keys(DeleteKeysRequest { keys: vec![] })
+            .await
+            .unwrap();
+        // Struct is empty. Nothing to assert on.
     }
 }
