@@ -58,19 +58,20 @@ impl AgentService for WoodpeckerAgentService {
 }
 
 // Refactor this out of main to avoid nested tokio runtime when running test.
-async fn serve() -> Result<(), tonic::transport::Error> {
+async fn run_server() -> Result<(), tonic::transport::Error> {
     let addr = "[::1]:50051".parse().unwrap();
     let service = WoodpeckerAgentService::default();
     println!("Server listening on {}", addr);
     Server::builder()
         .add_service(AgentServiceServer::new(service))
         .serve(addr)
-        .await
+        .await?;
+    Ok(())
 }
 
 #[tokio::main]
 pub async fn main() -> Result<(), tonic::transport::Error> {
-    serve().await
+    run_server().await
 }
 
 #[cfg(test)]
@@ -80,6 +81,7 @@ mod functional_test {
         DeleteKeysRequest, DeleteKeysResponse, GetDestinationsRequest,
     };
     use tokio::task;
+    use tokio::time::{sleep, Duration};
     use tonic::transport::Channel;
     use tonic::Response;
 
@@ -90,12 +92,14 @@ mod functional_test {
     }
 
     // Use multi_thread to have server on a separate thread.
-    #[tokio::test(flavor = "multi_thread")]
+    #[tokio::test]
     async fn get_destinations_roundtrip() {
-        let t = task::spawn_blocking(|| async { super::serve().await })
+        let task = task::spawn_blocking(|| async { super::run_server().await })
             .await
             .unwrap();
-        let _s = task::spawn(t);
+        let _server = task::spawn(task);
+        // Wait for server to start
+        sleep(Duration::from_millis(1000)).await;
 
         let mut client = client().await;
         let outbound1 = async_stream::stream! {
@@ -117,12 +121,14 @@ mod functional_test {
     }
 
     // Use multi_thread to have server on a separate thread.
-    #[tokio::test(flavor = "multi_thread")]
+    #[tokio::test]
     async fn create_delete_keys_roundtrip() {
-        let t = task::spawn_blocking(|| async { super::serve().await })
+        let task = task::spawn_blocking(|| async { super::run_server().await })
             .await
             .unwrap();
-        let _s = task::spawn(t);
+        let _server = task::spawn(task);
+        // Wait for server to start
+        sleep(Duration::from_millis(1000)).await;
 
         let mut client = client().await;
 
