@@ -8,14 +8,18 @@ use prototype::agent::protobuf::{
     CreateKeysRequest, CreateKeysResponse, DeleteKeysRequest, DeleteKeysResponse,
     GetAgentConfigRequest, GetAgentConfigResponse, GetDestinationsRequest, GetDestinationsResponse,
 };
+use std::sync::Arc;
+use prototype::agent::key_repository::KeyRepository;
 
 #[derive(Clone, Default)]
-pub struct WoodpeckerAgentService {}
+pub struct WoodpeckerAgentService {
+    repository: Arc<KeyRepository>,
+}
 
 #[tonic::async_trait]
 impl AgentService for WoodpeckerAgentService {
     type GetDestinationsStream = Pin<
-        Box<dyn Stream<Item = Result<GetDestinationsResponse, Status>> + Send + Sync + 'static>,
+        Box<dyn Stream<Item=Result<GetDestinationsResponse, Status>> + Send + Sync + 'static>,
     >;
 
     async fn get_agent_config(
@@ -46,13 +50,18 @@ impl AgentService for WoodpeckerAgentService {
         &self,
         _request: Request<CreateKeysRequest>,
     ) -> Result<Response<CreateKeysResponse>, Status> {
-        Ok(Response::new(CreateKeysResponse { keys: vec![] }))
+        let keys = self.repository.produce(5).await;
+        Ok(Response::new(CreateKeysResponse { keys }))
     }
 
     async fn delete_keys(
         &self,
-        _request: Request<DeleteKeysRequest>,
+        request: Request<DeleteKeysRequest>,
     ) -> Result<Response<DeleteKeysResponse>, Status> {
+        let keys = request.into_inner().keys;
+        for key in keys {
+            self.repository.consume(key).await;
+        }
         Ok(Response::new(DeleteKeysResponse {}))
     }
 }
@@ -135,10 +144,14 @@ mod functional_test {
         let res: Response<CreateKeysResponse> =
             client.create_keys(CreateKeysRequest {}).await.unwrap();
         let keys = res.into_inner().keys;
-        assert!(keys.is_empty());
+        println!("Received keys: {:?}", keys);
+        assert_eq!(5, keys.len());
+        for key in keys.clone() {
+            assert!(key.starts_with("http://localhost:4566/default_bucket/"));
+        }
 
         let _res: Response<DeleteKeysResponse> = client
-            .delete_keys(DeleteKeysRequest { keys: vec![] })
+            .delete_keys(DeleteKeysRequest { keys })
             .await
             .unwrap();
         // Struct is empty. Nothing to assert on.

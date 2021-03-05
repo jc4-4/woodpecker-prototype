@@ -53,7 +53,7 @@ impl KeyRepository {
         }
     }
 
-    async fn produce(&self, n: usize) -> Vec<Key> {
+    pub async fn produce(&self, n: usize) -> Vec<Key> {
         let mut keys = Vec::with_capacity(n);
         for _ in 0..n {
             let req = PutObjectRequest {
@@ -70,8 +70,9 @@ impl KeyRepository {
         keys
     }
 
+    // TODO: batch consume
     // TODO: create custom errors.
-    async fn consume(&self, key: Key) -> Result<(), RusotoError<SendMessageError>> {
+    pub async fn consume(&self, key: Key) -> Result<(), RusotoError<SendMessageError>> {
         let req = SendMessageRequest {
             queue_url: self.queue_url.clone(),
             message_body: key,
