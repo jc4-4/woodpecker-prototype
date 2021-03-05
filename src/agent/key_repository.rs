@@ -5,6 +5,7 @@ use rusoto_s3::PutObjectRequest;
 use rusoto_sqs::{SendMessageError, SendMessageRequest, Sqs, SqsClient};
 use uuid::Uuid;
 
+// TODO: create a struct with to_string.
 type Key = String;
 
 #[derive(Clone)]
