@@ -8,7 +8,6 @@ option java_outer_classname = "WoodpeckerProto";
 
 service AgentService {
   rpc GetAgentConfig(GetAgentConfigRequest) returns (GetAgentConfigResponse);
-  rpc GetDestinations(stream GetDestinationsRequest) returns (stream GetDestinationsResponse);
   rpc CreateKeys(CreateKeysRequest) returns (CreateKeysResponse);
   rpc DeleteKeys(DeleteKeysRequest) returns (DeleteKeysResponse);
 }
@@ -17,13 +16,6 @@ message GetAgentConfigRequest {
 }
 
 message GetAgentConfigResponse {
-}
-
-message GetDestinationsRequest {
-}
-
-message GetDestinationsResponse {
-  repeated string destinations = 1;
 }
 
 message CreateKeysRequest {

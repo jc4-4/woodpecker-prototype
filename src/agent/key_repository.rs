@@ -85,7 +85,7 @@ impl KeyRepository {
 
 #[cfg(test)]
 mod tests {
-    use rusoto_core::{RusotoError};
+    use rusoto_core::RusotoError;
     use rusoto_sqs::{
         CreateQueueError, CreateQueueRequest, CreateQueueResult, DeleteQueueRequest,
         ReceiveMessageRequest, Sqs,
