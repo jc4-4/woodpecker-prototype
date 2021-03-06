@@ -4,9 +4,20 @@ use rusoto_s3::util::{PreSignedRequest, PreSignedRequestOption};
 use rusoto_s3::PutObjectRequest;
 use rusoto_sqs::{SendMessageError, SendMessageRequest, Sqs, SqsClient};
 use uuid::Uuid;
+use std::fmt;
 
-// TODO: create a struct with to_string.
-type Key = String;
+/// This struct represents a signed key in a string.
+/// The underlying key uniquely identifies content in the space.
+#[derive(Clone)]
+pub struct SignedKey {
+    pub value: String,
+}
+
+impl fmt::Display for SignedKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
 
 #[derive(Clone)]
 pub struct KeyRepository {
@@ -17,6 +28,8 @@ pub struct KeyRepository {
     sqs_client: SqsClient,
 }
 
+// TODO: create partitions by agent id, account id, etc.
+// Example: /bucket/account_id/agent_id/uuid
 fn new_key() -> String {
     Uuid::new_v4().to_string()
 }
@@ -54,7 +67,7 @@ impl KeyRepository {
         }
     }
 
-    pub async fn produce(&self, n: usize) -> Vec<Key> {
+    pub async fn produce(&self, n: usize) -> Vec<SignedKey> {
         let mut keys = Vec::with_capacity(n);
         for _ in 0..n {
             let req = PutObjectRequest {
@@ -62,21 +75,23 @@ impl KeyRepository {
                 key: new_key(),
                 ..Default::default()
             };
-            keys.push(req.get_presigned_url(
-                &self.region,
-                &self.credentials,
-                &PreSignedRequestOption::default(),
-            ));
+            keys.push(SignedKey {
+                value: req.get_presigned_url(
+                    &self.region,
+                    &self.credentials,
+                    &PreSignedRequestOption::default(),
+                )
+            });
         }
         keys
     }
 
     // TODO: batch consume
     // TODO: create custom errors.
-    pub async fn consume(&self, key: Key) -> Result<(), RusotoError<SendMessageError>> {
+    pub async fn consume(&self, key: SignedKey) -> Result<(), RusotoError<SendMessageError>> {
         let req = SendMessageRequest {
             queue_url: self.queue_url.clone(),
-            message_body: key,
+            message_body: key.to_string(),
             ..Default::default()
         };
         self.sqs_client.send_message(req).await?;
@@ -153,7 +168,7 @@ mod tests {
         let repository = KeyRepository::default();
         let keys = repository.produce(1).await;
         assert_eq!(1, keys.len());
-        assert!(keys[0].starts_with("http://localhost:4566/default_bucket/"));
+        assert!(keys[0].to_string().starts_with("http://localhost:4566/default_bucket/"));
     }
 
     #[tokio::test]
@@ -167,7 +182,7 @@ mod tests {
         repository.consume(keys[0].clone()).await.unwrap();
 
         let messages = receive_message(&repository).await;
-        assert_eq!(keys, messages);
+        assert_eq!(vec![keys[0].to_string()], messages);
         delete_queue(&repository).await;
     }
 }

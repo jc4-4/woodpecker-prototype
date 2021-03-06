@@ -3,7 +3,7 @@
 
 use tonic::{transport::Server, Request, Response, Status};
 
-use prototype::agent::key_repository::KeyRepository;
+use prototype::agent::key_repository::{KeyRepository, SignedKey};
 use prototype::agent::protobuf::{
     agent_service_server::{AgentService, AgentServiceServer},
     CreateKeysRequest, CreateKeysResponse, DeleteKeysRequest, DeleteKeysResponse,
@@ -30,7 +30,8 @@ impl AgentService for WoodpeckerAgentService {
         _request: Request<CreateKeysRequest>,
     ) -> Result<Response<CreateKeysResponse>, Status> {
         let keys = self.repository.produce(5).await;
-        Ok(Response::new(CreateKeysResponse { keys }))
+        let values = keys.iter().map(SignedKey::to_string).collect();
+        Ok(Response::new(CreateKeysResponse { keys: values }))
     }
 
     async fn delete_keys(
@@ -39,7 +40,7 @@ impl AgentService for WoodpeckerAgentService {
     ) -> Result<Response<DeleteKeysResponse>, Status> {
         let keys = request.into_inner().keys;
         for key in keys {
-            self.repository.consume(key).await;
+            self.repository.consume(SignedKey { value: key }).await;
         }
         Ok(Response::new(DeleteKeysResponse {}))
     }
