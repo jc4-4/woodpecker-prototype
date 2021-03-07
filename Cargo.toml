@@ -23,11 +23,3 @@ tokio-test = "0.4.0"
 
 [build-dependencies]
 tonic-build = "0.4.0"
-
-[[bin]]
-name = "agent-server"
-path = "src/agent/server.rs"
-
-[[bin]]
-name = "agent-client"
-path = "src/agent/client.rs"
