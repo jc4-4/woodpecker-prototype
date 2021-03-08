@@ -3,8 +3,8 @@ use rusoto_credential::AwsCredentials;
 use rusoto_s3::util::{PreSignedRequest, PreSignedRequestOption};
 use rusoto_s3::PutObjectRequest;
 use rusoto_sqs::{SendMessageError, SendMessageRequest, Sqs, SqsClient};
-use uuid::Uuid;
 use std::fmt;
+use uuid::Uuid;
 
 /// This struct represents a signed key in a string.
 /// The underlying key uniquely identifies content in the space.
@@ -80,7 +80,7 @@ impl KeyRepository {
                     &self.region,
                     &self.credentials,
                     &PreSignedRequestOption::default(),
-                )
+                ),
             });
         }
         keys
@@ -168,7 +168,9 @@ mod tests {
         let repository = KeyRepository::default();
         let keys = repository.produce(1).await;
         assert_eq!(1, keys.len());
-        assert!(keys[0].to_string().starts_with("http://localhost:4566/default_bucket/"));
+        assert!(keys[0]
+            .to_string()
+            .starts_with("http://localhost:4566/default_bucket/"));
     }
 
     #[tokio::test]
