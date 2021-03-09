@@ -1,10 +1,7 @@
-
-
-
 use tonic::{transport::Server, Request, Response, Status};
 
-use prototype::agent::key_repository::{KeyRepository, SignedKey};
-use prototype::agent::protobuf::{
+use crate::agent::key_repository::{KeyRepository, SignedKey};
+use crate::agent::protobuf::{
     agent_service_server::{AgentService, AgentServiceServer},
     CreateKeysRequest, CreateKeysResponse, DeleteKeysRequest, DeleteKeysResponse,
     GetAgentConfigRequest, GetAgentConfigResponse,
@@ -64,8 +61,8 @@ pub async fn main() -> Result<(), tonic::transport::Error> {
 }
 
 #[cfg(test)]
-mod functional_test {
-    use prototype::agent::protobuf::{
+mod tests {
+    use crate::agent::protobuf::{
         agent_service_client::AgentServiceClient, CreateKeysRequest, CreateKeysResponse,
         DeleteKeysRequest, DeleteKeysResponse,
     };

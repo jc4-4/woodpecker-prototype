@@ -1,6 +1,4 @@
-
-
-use prototype::agent::protobuf::{
+use crate::agent::protobuf::{
     agent_service_client::AgentServiceClient, GetAgentConfigRequest, GetAgentConfigResponse,
 };
 
