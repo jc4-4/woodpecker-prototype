@@ -1,12 +1,9 @@
-use regex::bytes;
-use regex::Regex;
-
-use arrow::array::{
-    ArrayRef, StringArray, StringBuilder,
-};
+use arrow::array::{ArrayRef, StringArray, StringBuilder};
 use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use arrow::record_batch::RecordBatch;
+use regex::bytes;
+use regex::Regex;
 use std::sync::Arc;
 
 pub struct Parser {
@@ -22,7 +19,6 @@ impl Parser {
         }
     }
 
-    // TODO: arrow to parquet: https://github.com/apache/arrow/blob/master/rust/parquet/src/arrow/arrow_writer.rs
     fn parse(&self, lines: Vec<&str>) -> RecordBatch {
         // Create builders for each column
         let fields = self.schema.fields();
