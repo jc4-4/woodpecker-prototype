@@ -17,6 +17,7 @@ pub enum WoodpeckerError {
     Internal(String),
     IoError(io::Error),
     NotImplemented(String),
+    RusotoError(String), // Use String to workaround type parameter in RusotoError.
     TokioError(tokio::task::JoinError),
     TonicError(tonic::transport::Error),
 }
@@ -55,6 +56,12 @@ impl From<io::Error> for WoodpeckerError {
     }
 }
 
+impl<E: Error + 'static> From<rusoto_core::RusotoError<E>> for WoodpeckerError {
+    fn from(e: rusoto_core::RusotoError<E>) -> Self {
+        WoodpeckerError::RusotoError(e.to_string())
+    }
+}
+
 impl From<tokio::task::JoinError> for WoodpeckerError {
     fn from(e: tokio::task::JoinError) -> Self {
         WoodpeckerError::TokioError(e)
@@ -76,6 +83,7 @@ impl Display for WoodpeckerError {
             WoodpeckerError::Internal(desc) => write!(f, "Internal error: {}", desc),
             WoodpeckerError::IoError(ref desc) => write!(f, "IO error: {}", desc),
             WoodpeckerError::NotImplemented(ref desc) => write!(f, "Not implemented: {}", desc),
+            WoodpeckerError::RusotoError(ref desc) => write!(f, "Rusoto error: {}", desc),
             WoodpeckerError::TokioError(desc) => write!(f, "Tokio join error: {}", desc),
             WoodpeckerError::TonicError(desc) => write!(f, "Tonic error: {}", desc),
         }

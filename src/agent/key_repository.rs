@@ -1,4 +1,5 @@
-use rusoto_core::{Region, RusotoError};
+use crate::error::Result;
+use rusoto_core::Region;
 use rusoto_credential::AwsCredentials;
 use rusoto_s3::util::{PreSignedRequest, PreSignedRequestOption};
 use rusoto_s3::PutObjectRequest;
@@ -87,8 +88,7 @@ impl KeyRepository {
     }
 
     // TODO: batch consume
-    // TODO: create custom errors.
-    pub async fn consume(&self, key: SignedKey) -> Result<(), RusotoError<SendMessageError>> {
+    pub async fn consume(&self, key: SignedKey) -> Result<()> {
         let req = SendMessageRequest {
             queue_url: self.queue_url.clone(),
             message_body: key.to_string(),
@@ -101,17 +101,15 @@ impl KeyRepository {
 
 #[cfg(test)]
 mod tests {
+    use super::KeyRepository;
+    use crate::error::{Result, WoodpeckerError};
     use rusoto_core::RusotoError;
     use rusoto_sqs::{
         CreateQueueError, CreateQueueRequest, CreateQueueResult, DeleteQueueRequest,
         ReceiveMessageRequest, Sqs,
     };
 
-    use super::KeyRepository;
-
-    async fn create_queue(
-        repository: &KeyRepository,
-    ) -> Result<CreateQueueResult, RusotoError<CreateQueueError>> {
+    async fn create_queue(repository: &KeyRepository) -> Result<CreateQueueResult> {
         let parts: Vec<&str> = repository.queue_url.split("/").collect();
         let queue_name = parts
             .last()
@@ -119,14 +117,15 @@ mod tests {
             .to_string();
         println!("Creating queue with name: {}", queue_name);
 
-        repository
+        let result = repository
             .sqs_client
             .create_queue(CreateQueueRequest {
                 // Matching the default of KeyRepository
                 queue_name,
                 ..Default::default()
             })
-            .await
+            .await?;
+        Ok(result)
     }
 
     async fn receive_message(repository: &KeyRepository) -> Vec<String> {
@@ -145,15 +144,15 @@ mod tests {
             .collect()
     }
 
-    async fn delete_queue(repository: &KeyRepository) -> () {
+    async fn delete_queue(repository: &KeyRepository) -> Result<()> {
         repository
             .sqs_client
             .delete_queue(DeleteQueueRequest {
                 queue_url: repository.queue_url.clone(),
                 ..Default::default()
             })
-            .await
-            .unwrap();
+            .await?;
+        Ok(())
     }
 
     #[tokio::test]
@@ -185,6 +184,6 @@ mod tests {
 
         let messages = receive_message(&repository).await;
         assert_eq!(vec![keys[0].to_string()], messages);
-        delete_queue(&repository).await;
+        delete_queue(&repository).await.unwrap();
     }
 }
