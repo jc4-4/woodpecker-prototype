@@ -1,11 +1,11 @@
-use tonic::{transport::Server, Request, Response, Status};
-
 use crate::agent::key_repository::{KeyRepository, SignedKey};
 use crate::agent::protobuf::{
     agent_service_server::{AgentService, AgentServiceServer},
     CreateKeysRequest, CreateKeysResponse, DeleteKeysRequest, DeleteKeysResponse,
     GetAgentConfigRequest, GetAgentConfigResponse,
 };
+use crate::error::Result;
+use tonic::{transport::Server, Request, Response, Status};
 use std::sync::Arc;
 
 #[derive(Clone, Default)]
@@ -18,14 +18,14 @@ impl AgentService for WoodpeckerAgentService {
     async fn get_agent_config(
         &self,
         _request: Request<GetAgentConfigRequest>,
-    ) -> Result<Response<GetAgentConfigResponse>, Status> {
+    ) -> std::result::Result<Response<GetAgentConfigResponse>, Status> {
         Ok(Response::new(GetAgentConfigResponse {}))
     }
 
     async fn create_keys(
         &self,
         _request: Request<CreateKeysRequest>,
-    ) -> Result<Response<CreateKeysResponse>, Status> {
+    ) -> std::result::Result<Response<CreateKeysResponse>, Status> {
         let keys = self.repository.produce(5).await;
         let values = keys.iter().map(SignedKey::to_string).collect();
         Ok(Response::new(CreateKeysResponse { keys: values }))
@@ -34,9 +34,10 @@ impl AgentService for WoodpeckerAgentService {
     async fn delete_keys(
         &self,
         request: Request<DeleteKeysRequest>,
-    ) -> Result<Response<DeleteKeysResponse>, Status> {
+    ) -> std::result::Result<Response<DeleteKeysResponse>, Status> {
         let keys = request.into_inner().keys;
         for key in keys {
+            // FIXME: use result. Currently broken due to queue mismatch.
             self.repository.consume(SignedKey { value: key }).await;
         }
         Ok(Response::new(DeleteKeysResponse {}))
@@ -44,7 +45,7 @@ impl AgentService for WoodpeckerAgentService {
 }
 
 // Refactor this out of main to avoid nested tokio runtime when running test.
-async fn run_server() -> Result<(), tonic::transport::Error> {
+async fn run_server() -> Result<()> {
     let addr = "[::1]:50051".parse().unwrap();
     let service = WoodpeckerAgentService::default();
     println!("Server listening on {}", addr);
@@ -56,7 +57,7 @@ async fn run_server() -> Result<(), tonic::transport::Error> {
 }
 
 #[tokio::main]
-pub async fn main() -> Result<(), tonic::transport::Error> {
+pub async fn main() -> Result<()> {
     run_server().await
 }
 
