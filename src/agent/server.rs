@@ -58,6 +58,7 @@ async fn run_server() -> Result<()> {
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
+    env_logger::init();
     run_server().await
 }
 

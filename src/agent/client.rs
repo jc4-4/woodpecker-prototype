@@ -4,6 +4,7 @@ use crate::agent::protobuf::{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
     let mut client = AgentServiceClient::connect("http://[::1]:50051").await?;
     {
         let request = tonic::Request::new(GetAgentConfigRequest {});
