@@ -1,4 +1,5 @@
 use crate::error::Result;
+use same_file::Handle;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -32,6 +33,12 @@ impl Tailer<'_> {
             Ok(Some(&self.buffer[0..bytes]))
         }
     }
+
+    fn is_rotated(&self) -> Result<bool> {
+        let file_handle = Handle::from_file(self.file.try_clone()?)?;
+        let path_handle = Handle::from_path(self.path)?;
+        Ok(file_handle != path_handle)
+    }
 }
 
 #[cfg(test)]
@@ -39,7 +46,7 @@ mod tests {
     use crate::agent::tailer::Tailer;
     use log::{debug, info};
     use std::env::current_dir;
-    use std::fs::{create_dir_all, remove_file, File, OpenOptions};
+    use std::fs::{create_dir_all, remove_file, rename, File, OpenOptions};
     use std::io::{Read, Seek, SeekFrom, Write};
     use std::path::Path;
     use std::str::from_utf8;
@@ -56,7 +63,7 @@ mod tests {
         let mut temp_file = NamedTempFile::new().unwrap();
         temp_file.write(content).unwrap();
 
-        let path_str = temp_file.as_ref().as_os_str().to_str().unwrap();
+        let path_str = temp_file.path().to_str().unwrap();
         debug!("File created at {}", path_str);
         let mut tailer = Tailer::try_new(path_str, 10).unwrap();
         let mut bytes = 0;
@@ -65,5 +72,21 @@ mod tests {
             bytes += v.len();
         }
         assert_eq!(bytes, content.len());
+    }
+
+    #[test]
+    fn rotation() {
+        init();
+        let mut file1 = NamedTempFile::new().unwrap();
+        let path_str = file1.path().to_str().unwrap();
+        debug!("File created at {}", path_str);
+
+        let tailer = Tailer::try_new(path_str, 10).unwrap();
+        assert!(!tailer.is_rotated().unwrap());
+
+        // Simulate a rotation with rename and create.
+        rename(file1.path(), NamedTempFile::new().unwrap().path()).unwrap();
+        let rotated = File::create(path_str).unwrap();
+        assert!(tailer.is_rotated().unwrap());
     }
 }
