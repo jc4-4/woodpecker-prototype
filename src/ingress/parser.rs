@@ -31,14 +31,13 @@ impl Parser {
         // Write columns to each builder
         for line in lines {
             let caps = self.regex.captures(line).unwrap();
-            for j in 0..cols {
-                // index 0 refers to the entire match
-                match caps.get(j + 1) {
+            for i in 0..cols {
+                match caps.name(fields[i].name()) {
                     Some(x) => {
-                        string_builders[j].append_value(x.as_str()).unwrap();
+                        string_builders[i].append_value(x.as_str()).unwrap();
                     }
                     None => {
-                        string_builders[j].append_null().unwrap();
+                        string_builders[i].append_null().unwrap();
                     }
                 }
             }
@@ -57,22 +56,36 @@ impl Parser {
     }
 }
 
-#[test]
-fn parser() {
-    let parser = Parser::new(
-        "f=(?P<f>\\w+),b=(?P<b>\\w+)?",
-        Arc::from(Schema::new(vec![
-            Field::new("f", DataType::Utf8, false),
-            Field::new("b", DataType::Utf8, false),
-        ])),
-    );
+#[cfg(test)]
+mod tests {
+    use super::Parser;
+    use arrow::array::StringArray;
+    use arrow::datatypes::{DataType, Field, Schema};
+    use arrow::record_batch::RecordBatch;
+    use log::debug;
+    use std::sync::Arc;
 
-    let record_batch = parser.parse(vec!["f=o1,b=ar", "f=o2,b=99", "f=o3,b="]);
-    assert_eq!(3, record_batch.num_rows());
-    assert_eq!(2, record_batch.num_columns());
-    assert_eq!(
-        format!("{:#?}", record_batch),
-        "RecordBatch {
+    fn init() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
+
+    #[test]
+    fn parse_basic() {
+        init();
+        let parser = Parser::new(
+            "f=(?P<f>\\w+),b=(?P<b>\\w+)?",
+            Arc::from(Schema::new(vec![
+                Field::new("f", DataType::Utf8, false),
+                Field::new("b", DataType::Utf8, false),
+            ])),
+        );
+
+        let record_batch = parser.parse(vec!["f=o1,b=ar", "f=o2,b=99", "f=o3,b="]);
+        assert_eq!(3, record_batch.num_rows());
+        assert_eq!(2, record_batch.num_columns());
+        assert_eq!(
+            format!("{:#?}", record_batch),
+            "RecordBatch {
     schema: Schema {
         fields: [
             Field {
@@ -109,33 +122,38 @@ fn parser() {
         ],
     ],
 }"
-    );
-}
+        );
+    }
 
-#[test]
-fn example_group() {
-    let re = Regex::new("f=(?P<f>\\w+),b=(?P<b>\\w+)").unwrap();
-    let text = "f=oo,b=ar";
-    let caps = re.captures(text).unwrap();
-    assert_eq!("oo", &caps["f"]);
-    assert_eq!("ar", &caps["b"]);
 
-    assert_eq!("oo", caps.name("f").unwrap().as_str());
-    assert_eq!("ar", caps.name("b").unwrap().as_str());
-    assert_eq!(None, caps.name("nothing"));
+    #[test]
+    fn parse_column_by_name() {
+        init();
+        // Notice that f goes first in the pattern but last in the schema.
+        let parser = Parser::new(
+            "f=(?P<f>\\w+),b=(?P<b>\\w+)?",
+            Arc::from(Schema::new(vec![
+                Field::new("b", DataType::Utf8, false),
+                Field::new("f", DataType::Utf8, false),
+            ])),
+        );
 
-    assert_eq!("f=oo,b=ar", caps.get(0).unwrap().as_str());
-    assert_eq!("oo", caps.get(1).unwrap().as_str());
-    assert_eq!("ar", caps.get(2).unwrap().as_str());
-    assert_eq!(None, caps.get(3));
-}
+        let record_batch = parser.parse(vec!["f=oo,b=ar"]);
+        assert_eq!(1, record_batch.num_rows());
+        debug!("{:#?}", record_batch);
 
-#[test]
-fn example_bytes() {
-    let re = bytes::Regex::new("f=(?P<f>\\w+),b=(?P<b>\\w+)").unwrap();
-    let bytes = b"f=oo,b=ar";
-    let caps = re.captures(bytes).unwrap();
+        let col_b = record_batch
+            .column(0)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
+        assert_eq!(StringArray::from(vec!["ar"]), *col_b);
 
-    assert_eq!("oo", std::str::from_utf8(&caps["f"]).unwrap());
-    assert_eq!(b"ar", &caps["b"]);
+        let col_f = record_batch
+            .column(1)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
+        assert_eq!(StringArray::from(vec!["oo"]), *col_f);
+    }
 }
