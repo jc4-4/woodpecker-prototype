@@ -34,6 +34,12 @@ impl Tailer<'_> {
         }
     }
 
+    fn rotate(&mut self) -> Result<()> {
+        // TODO check is_rotated
+        self.file = File::open(self.path)?;
+        Ok(())
+    }
+
     fn is_rotated(&self) -> Result<bool> {
         let file_handle = Handle::from_file(self.file.try_clone()?)?;
         let path_handle = Handle::from_path(self.path)?;
@@ -59,7 +65,7 @@ mod tests {
     #[test]
     fn read_file() {
         init();
-        let content = b"Mary has a little lamb\nLittle lamb,\nlittle lamb";
+        let content = b"Mary had a little lamb\nLittle lamb, little lamb";
         let mut temp_file = NamedTempFile::new().unwrap();
         temp_file.write(content).unwrap();
 
@@ -75,7 +81,7 @@ mod tests {
     }
 
     #[test]
-    fn rotation() {
+    fn is_rotated() {
         init();
         let mut file1 = NamedTempFile::new().unwrap();
         let path_str = file1.path().to_str().unwrap();
@@ -86,7 +92,45 @@ mod tests {
 
         // Simulate a rotation with rename and create.
         rename(file1.path(), NamedTempFile::new().unwrap().path()).unwrap();
-        let rotated = File::create(path_str).unwrap();
+        let _rotated = File::create(path_str).unwrap();
         assert!(tailer.is_rotated().unwrap());
+    }
+
+    #[test]
+    fn rotate() {
+        init();
+        let content = b"Mary had a little lamb\nLittle lamb, little lamb";
+        let mut file = NamedTempFile::new().unwrap();
+        file.write(content).unwrap();
+
+        let path_str = file.path().to_str().unwrap();
+        debug!("File created at {}", path_str);
+
+        let mut bytes = 0;
+        let mut tailer = Tailer::try_new(path_str, 10).unwrap();
+        while let Some(v) = tailer.read().unwrap() {
+            debug!("length: {} content: {}", v.len(), from_utf8(v).unwrap());
+            bytes += v.len();
+        }
+        assert_eq!(bytes, content.len());
+        assert!(!tailer.is_rotated().unwrap());
+
+        // Simulate a rotation with rename and create.
+        let renamed = NamedTempFile::new().unwrap();
+        debug!("File renamed to {}", renamed.path().to_str().unwrap());
+        rename(file.path(), renamed.path()).unwrap();
+        let mut file = File::create(path_str).unwrap();
+        debug!("File created at {}", path_str);
+
+        let content2 = b"Mary had a little lamb\nIt's fleece was white as snow";
+        file.write(content2).unwrap();
+        assert!(tailer.is_rotated().unwrap());
+
+        tailer.rotate().unwrap();
+        while let Some(v) = tailer.read().unwrap() {
+            debug!("length: {} content: {}", v.len(), from_utf8(v).unwrap());
+            bytes += v.len();
+        }
+        assert_eq!(bytes, content.len() + content2.len());
     }
 }
