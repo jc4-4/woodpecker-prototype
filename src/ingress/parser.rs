@@ -125,7 +125,6 @@ mod tests {
         );
     }
 
-
     #[test]
     fn parse_column_by_name() {
         init();

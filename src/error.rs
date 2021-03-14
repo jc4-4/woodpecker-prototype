@@ -28,6 +28,12 @@ impl<T> Into<Result<T>> for WoodpeckerError {
     }
 }
 
+impl Into<tonic::Status> for WoodpeckerError {
+    fn into(self) -> tonic::Status {
+        tonic::Status::new(tonic::Code::Internal, self.to_string())
+    }
+}
+
 pub fn woodpecker_error(message: &str) -> WoodpeckerError {
     WoodpeckerError::General(message.to_owned())
 }

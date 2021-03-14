@@ -5,6 +5,7 @@ use crate::agent::protobuf::{
     GetAgentConfigRequest, GetAgentConfigResponse,
 };
 use crate::error::Result;
+use log::debug;
 use std::sync::Arc;
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -28,6 +29,7 @@ impl AgentService for WoodpeckerAgentService {
     ) -> std::result::Result<Response<CreateKeysResponse>, Status> {
         let keys = self.repository.produce(5).await;
         let values = keys.iter().map(SignedKey::to_string).collect();
+        debug!("Created keys: {:?}", values);
         Ok(Response::new(CreateKeysResponse { keys: values }))
     }
 
@@ -35,10 +37,12 @@ impl AgentService for WoodpeckerAgentService {
         &self,
         request: Request<DeleteKeysRequest>,
     ) -> std::result::Result<Response<DeleteKeysResponse>, Status> {
-        let keys = request.into_inner().keys;
-        for key in keys {
-            // FIXME: use result. Currently broken due to queue mismatch.
-            self.repository.consume(SignedKey { value: key }).await;
+        for key in request.into_inner().keys {
+            debug!("Deleting key: {}", key);
+            self.repository
+                .consume(SignedKey { value: key })
+                .await
+                .unwrap();
         }
         Ok(Response::new(DeleteKeysResponse {}))
     }
@@ -68,10 +72,18 @@ mod tests {
         agent_service_client::AgentServiceClient, CreateKeysRequest, CreateKeysResponse,
         DeleteKeysRequest, DeleteKeysResponse,
     };
+    use crate::error::Result;
+    use log::debug;
+    use rusoto_core::Region;
+    use rusoto_sqs::{CreateQueueRequest, CreateQueueResult, DeleteQueueRequest, Sqs, SqsClient};
     use tokio::task;
     use tokio::time::{sleep, Duration};
     use tonic::transport::Channel;
     use tonic::Response;
+
+    fn init() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
 
     async fn client() -> AgentServiceClient<Channel> {
         AgentServiceClient::connect("http://[::1]:50051")
@@ -79,8 +91,45 @@ mod tests {
             .expect("Client fails to connect: ")
     }
 
+    async fn create_queue() -> Result<CreateQueueResult> {
+        let region = Region::Custom {
+            name: "local".to_string(),
+            endpoint: "http://localhost:4566".to_string(),
+        };
+        let sqs_client = SqsClient::new(region);
+        let queue_name = "default_queue_name".to_string();
+        debug!("Creating queue with name: {}", queue_name);
+        let result = sqs_client
+            .create_queue(CreateQueueRequest {
+                queue_name,
+                ..Default::default()
+            })
+            .await?;
+        Ok(result)
+    }
+
+    async fn delete_queue() -> Result<()> {
+        let region = Region::Custom {
+            name: "local".to_string(),
+            endpoint: "http://localhost:4566".to_string(),
+        };
+        let sqs_client = SqsClient::new(region);
+        let queue_url = "http://localhost:4566/000000000000/default_queue_name".to_string();
+        debug!("Deleting queue with name: {}", queue_url);
+
+        sqs_client
+            .delete_queue(DeleteQueueRequest {
+                queue_url,
+                ..Default::default()
+            })
+            .await?;
+        Ok(())
+    }
+
     #[tokio::test]
     async fn create_delete_keys_roundtrip() {
+        init();
+        create_queue().await.unwrap();
         let task = task::spawn_blocking(|| async { super::run_server().await })
             .await
             .unwrap();
@@ -93,7 +142,6 @@ mod tests {
         let res: Response<CreateKeysResponse> =
             client.create_keys(CreateKeysRequest {}).await.unwrap();
         let keys = res.into_inner().keys;
-        println!("Received keys: {:?}", keys);
         assert_eq!(5, keys.len());
         for key in keys.clone() {
             assert!(key.starts_with("http://localhost:4566/default_bucket/"));
@@ -104,5 +152,6 @@ mod tests {
             .await
             .unwrap();
         // Struct is empty. Nothing to assert on.
+        delete_queue().await.unwrap();
     }
 }
