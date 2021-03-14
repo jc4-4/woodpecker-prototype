@@ -43,27 +43,27 @@ mod tests {
     use std::io::{Read, Seek, SeekFrom, Write};
     use std::path::Path;
     use std::str::from_utf8;
+    use tempfile::NamedTempFile;
 
     fn init() {
         let _ = env_logger::builder().is_test(true).try_init();
     }
 
     #[test]
-    fn read_write() {
+    fn read_file() {
         init();
         let content = b"Mary has a little lamb\nLittle lamb,\nlittle lamb";
-        let mut file = File::create("foo.txt").unwrap();
-        file.write_all(content).unwrap();
-        file.sync_all().unwrap();
-        drop(file);
+        let mut temp_file = NamedTempFile::new().unwrap();
+        temp_file.write(content).unwrap();
 
-        let mut tailer = Tailer::try_new("foo.txt", 10).unwrap();
+        let path_str = temp_file.as_ref().as_os_str().to_str().unwrap();
+        debug!("File created at {}", path_str);
+        let mut tailer = Tailer::try_new(path_str, 10).unwrap();
         let mut bytes = 0;
         while let Some(v) = tailer.read().unwrap() {
             debug!("length: {} content: {}", v.len(), from_utf8(v).unwrap());
             bytes += v.len();
         }
-        remove_file("foo.txt");
         assert_eq!(bytes, content.len());
     }
 }
