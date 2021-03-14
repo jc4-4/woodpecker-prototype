@@ -1,17 +1,47 @@
+use crate::error::Result;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
+
 /// Continuously tails a log file from previous offset.
 /// Return a buffer of log events aligned by regex.
 /// Detect and chase to new file upon end-of-file.
 // See the kinesis agent for checkpoints etc. https://github.com/awslabs/amazon-kinesis-agent
-pub struct Tailer {
+pub struct Tailer<'a> {
+    path: &'a Path,
+    file: File,
+    buffer: Vec<u8>,
+}
 
+impl Tailer<'_> {
+    fn try_new(path: &str, buffer_size: usize) -> Result<Tailer> {
+        let path = Path::new(path);
+        let file = File::open(path)?;
+        Ok(Tailer {
+            path,
+            file,
+            buffer: vec![0; buffer_size],
+        })
+    }
+
+    fn read(&mut self) -> Result<Option<&[u8]>> {
+        let bytes = self.file.read(&mut *self.buffer)?;
+        if bytes == 0 {
+            Ok(None)
+        } else {
+            Ok(Some(&self.buffer[0..bytes]))
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::agent::tailer::Tailer;
     use log::{debug, info};
     use std::env::current_dir;
-    use std::fs::{create_dir_all, File, OpenOptions};
+    use std::fs::{create_dir_all, remove_file, File, OpenOptions};
     use std::io::{Read, Seek, SeekFrom, Write};
+    use std::path::Path;
     use std::str::from_utf8;
 
     fn init() {
@@ -22,42 +52,18 @@ mod tests {
     fn read_write() {
         init();
         let content = b"Mary has a little lamb\nLittle lamb,\nlittle lamb";
-        let mut file = get_temp_file("foo.txt", content);
+        let mut file = File::create("foo.txt").unwrap();
+        file.write_all(content).unwrap();
+        file.sync_all().unwrap();
+        drop(file);
+
+        let mut tailer = Tailer::try_new("foo.txt", 10).unwrap();
         let mut bytes = 0;
-        let mut buffer = vec![0; 10];
-        while let Ok(i) = file.read(&mut buffer) {
-            if i == 0 {
-                debug!("No more bytes");
-                break;
-            } else {
-                bytes += i;
-                debug!("{}", from_utf8(&buffer[0..i]).unwrap());
-            }
+        while let Some(v) = tailer.read().unwrap() {
+            debug!("length: {} content: {}", v.len(), from_utf8(v).unwrap());
+            bytes += v.len();
         }
+        remove_file("foo.txt");
         assert_eq!(bytes, content.len());
-    }
-
-    /// Returns file handle for a temp file in 'target' directory with a provided content
-    pub fn get_temp_file(file_name: &str, content: &[u8]) -> File {
-        // build tmp path to a file in "target/debug/testdata"
-        let mut path_buf = current_dir().unwrap();
-        path_buf.push("target");
-        path_buf.push("debug");
-        path_buf.push("testdata");
-        create_dir_all(&path_buf).unwrap();
-        path_buf.push(file_name);
-
-        // write file content
-        let mut tmp_file = File::create(path_buf.as_path()).unwrap();
-        tmp_file.write_all(content).unwrap();
-        tmp_file.sync_all().unwrap();
-
-        // return file handle for both read and write
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(path_buf.as_path());
-        assert!(file.is_ok());
-        file.unwrap()
     }
 }
