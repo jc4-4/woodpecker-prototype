@@ -5,8 +5,8 @@ use crate::agent::protobuf::{
     GetAgentConfigRequest, GetAgentConfigResponse,
 };
 use crate::error::Result;
-use tonic::{transport::Server, Request, Response, Status};
 use std::sync::Arc;
+use tonic::{transport::Server, Request, Response, Status};
 
 #[derive(Clone, Default)]
 pub struct WoodpeckerAgentService {

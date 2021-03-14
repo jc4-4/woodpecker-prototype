@@ -6,3 +6,4 @@ pub mod protobuf {
 
 mod client;
 mod server;
+mod tailer;
