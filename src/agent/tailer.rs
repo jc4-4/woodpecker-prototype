@@ -50,11 +50,11 @@ impl Tailer<'_> {
 #[cfg(test)]
 mod tests {
     use crate::agent::tailer::Tailer;
-    use log::{debug, info};
-    use std::env::current_dir;
+    use log::debug;
+
     use std::fs::{create_dir_all, remove_file, rename, File, OpenOptions};
-    use std::io::{Read, Seek, SeekFrom, Write};
-    use std::path::Path;
+    use std::io::{Read, Write};
+
     use std::str::from_utf8;
     use tempfile::NamedTempFile;
 
@@ -83,7 +83,7 @@ mod tests {
     #[test]
     fn is_rotated() {
         init();
-        let mut file1 = NamedTempFile::new().unwrap();
+        let file1 = NamedTempFile::new().unwrap();
         let path_str = file1.path().to_str().unwrap();
         debug!("File created at {}", path_str);
 

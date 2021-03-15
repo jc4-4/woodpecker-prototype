@@ -1,8 +1,8 @@
-use arrow::array::{ArrayRef, StringArray, StringBuilder};
+use arrow::array::{ArrayRef, StringBuilder};
 use arrow::compute::cast;
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow::datatypes::SchemaRef;
 use arrow::record_batch::RecordBatch;
-use regex::bytes;
+
 use regex::Regex;
 use std::sync::Arc;
 
@@ -46,8 +46,7 @@ impl Parser {
         // Collect builder to form array
         let mut arrays = Vec::with_capacity(cols);
         for i in 0..cols {
-            let array = StringArray::from(string_builders[i].finish());
-            let array_ref = Arc::new(array) as ArrayRef;
+            let array_ref = Arc::new(string_builders[i].finish()) as ArrayRef;
             let typed_array_ref = cast(&array_ref, fields[i].data_type()).unwrap();
             arrays.push(typed_array_ref);
         }
@@ -61,7 +60,7 @@ mod tests {
     use super::Parser;
     use arrow::array::StringArray;
     use arrow::datatypes::{DataType, Field, Schema};
-    use arrow::record_batch::RecordBatch;
+
     use log::debug;
     use std::sync::Arc;
 

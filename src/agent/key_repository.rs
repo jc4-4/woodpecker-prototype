@@ -3,7 +3,7 @@ use rusoto_core::Region;
 use rusoto_credential::AwsCredentials;
 use rusoto_s3::util::{PreSignedRequest, PreSignedRequestOption};
 use rusoto_s3::PutObjectRequest;
-use rusoto_sqs::{SendMessageError, SendMessageRequest, Sqs, SqsClient};
+use rusoto_sqs::{SendMessageRequest, Sqs, SqsClient};
 use std::fmt;
 use uuid::Uuid;
 
@@ -64,7 +64,7 @@ impl KeyRepository {
             queue_url,
             region: region.clone(),
             credentials,
-            sqs_client: SqsClient::new(region.clone()),
+            sqs_client: SqsClient::new(region),
         }
     }
 
@@ -102,11 +102,10 @@ impl KeyRepository {
 #[cfg(test)]
 mod tests {
     use super::KeyRepository;
-    use crate::error::{Result, WoodpeckerError};
-    use rusoto_core::RusotoError;
+    use crate::error::Result;
+
     use rusoto_sqs::{
-        CreateQueueError, CreateQueueRequest, CreateQueueResult, DeleteQueueRequest,
-        ReceiveMessageRequest, Sqs,
+        CreateQueueRequest, CreateQueueResult, DeleteQueueRequest, ReceiveMessageRequest, Sqs,
     };
 
     async fn create_queue(repository: &KeyRepository) -> Result<CreateQueueResult> {
