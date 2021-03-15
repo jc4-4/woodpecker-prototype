@@ -76,6 +76,7 @@ mod tests {
     use log::debug;
     use rusoto_core::Region;
     use rusoto_sqs::{CreateQueueRequest, CreateQueueResult, DeleteQueueRequest, Sqs, SqsClient};
+    use serial_test::serial;
     use tokio::task;
     use tokio::time::{sleep, Duration};
     use tonic::transport::Channel;
@@ -127,6 +128,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn create_delete_keys_roundtrip() {
         init();
         create_queue().await.unwrap();

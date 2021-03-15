@@ -103,7 +103,7 @@ impl KeyRepository {
 mod tests {
     use super::KeyRepository;
     use crate::error::Result;
-
+    use serial_test::serial;
     use rusoto_sqs::{
         CreateQueueRequest, CreateQueueResult, DeleteQueueRequest, ReceiveMessageRequest, Sqs,
     };
@@ -172,6 +172,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn roundtrip() {
         let repository = KeyRepository::default();
         create_queue(&repository)
