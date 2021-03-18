@@ -12,7 +12,7 @@ pub struct Parser {
 }
 
 impl Parser {
-    fn new(pattern: &str, schema: SchemaRef) -> Parser {
+    pub fn new(pattern: &str, schema: SchemaRef) -> Parser {
         Parser {
             schema,
             regex: Regex::new(pattern).unwrap(),

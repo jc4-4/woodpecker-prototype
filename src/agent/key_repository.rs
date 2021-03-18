@@ -103,10 +103,10 @@ impl KeyRepository {
 mod tests {
     use super::KeyRepository;
     use crate::error::Result;
-    use serial_test::serial;
     use rusoto_sqs::{
         CreateQueueRequest, CreateQueueResult, DeleteQueueRequest, ReceiveMessageRequest, Sqs,
     };
+    use serial_test::serial;
 
     async fn create_queue(repository: &KeyRepository) -> Result<CreateQueueResult> {
         let parts: Vec<&str> = repository.queue_url.split("/").collect();

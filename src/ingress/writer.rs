@@ -14,7 +14,7 @@ pub struct Writer {
 }
 
 impl Writer {
-    fn new(schema: SchemaRef) -> Writer {
+    pub fn new(schema: SchemaRef) -> Writer {
         Writer { schema }
     }
 
