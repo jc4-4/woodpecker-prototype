@@ -1,3 +1,4 @@
+use crate::data::pub_sub::{PubSub, SqsPubSub};
 use crate::error::Result;
 use rusoto_core::Region;
 use rusoto_credential::AwsCredentials;
@@ -26,7 +27,7 @@ pub struct KeyRepository {
     queue_url: String,
     region: Region,
     credentials: AwsCredentials,
-    sqs_client: SqsClient,
+    pub_sub: SqsPubSub,
 }
 
 // TODO: create partitions by agent id, account id, etc.
@@ -42,13 +43,12 @@ impl Default for KeyRepository {
             name: "local".to_string(),
             endpoint: "http://localhost:4566".to_string(),
         };
-        KeyRepository {
-            bucket: "default_bucket".to_string(),
-            queue_url: "http://localhost:4566/000000000000/default_queue_name".to_string(),
-            region: region.clone(),
-            credentials: Default::default(),
-            sqs_client: SqsClient::new(region),
-        }
+        KeyRepository::new(
+            "default_bucket".to_string(),
+            "http://localhost:4566/000000000000/default_queue_name".to_string(),
+            region.clone(),
+            AwsCredentials::default(),
+        )
     }
 }
 
@@ -64,7 +64,7 @@ impl KeyRepository {
             queue_url,
             region: region.clone(),
             credentials,
-            sqs_client: SqsClient::new(region),
+            pub_sub: SqsPubSub::new(region),
         }
     }
 
@@ -89,12 +89,9 @@ impl KeyRepository {
 
     // TODO: batch consume
     pub async fn consume(&self, key: SignedKey) -> Result<()> {
-        let req = SendMessageRequest {
-            queue_url: self.queue_url.clone(),
-            message_body: key.to_string(),
-            ..Default::default()
-        };
-        self.sqs_client.send_message(req).await?;
+        self.pub_sub
+            .send_messages(self.queue_url.clone(), vec![key.to_string()])
+            .await?;
         Ok(())
     }
 }
@@ -102,56 +99,15 @@ impl KeyRepository {
 #[cfg(test)]
 mod tests {
     use super::KeyRepository;
+    use crate::data::pub_sub::PubSub;
     use crate::error::Result;
     use rusoto_sqs::{
         CreateQueueRequest, CreateQueueResult, DeleteQueueRequest, ReceiveMessageRequest, Sqs,
     };
     use serial_test::serial;
 
-    async fn create_queue(repository: &KeyRepository) -> Result<CreateQueueResult> {
-        let parts: Vec<&str> = repository.queue_url.split("/").collect();
-        let queue_name = parts
-            .last()
-            .expect("queue_name in repository.queue_url")
-            .to_string();
-        println!("Creating queue with name: {}", queue_name);
-
-        let result = repository
-            .sqs_client
-            .create_queue(CreateQueueRequest {
-                // Matching the default of KeyRepository
-                queue_name,
-                ..Default::default()
-            })
-            .await?;
-        Ok(result)
-    }
-
-    async fn receive_message(repository: &KeyRepository) -> Vec<String> {
-        let res = repository
-            .sqs_client
-            .receive_message(ReceiveMessageRequest {
-                queue_url: repository.queue_url.clone(),
-                ..Default::default()
-            })
-            .await;
-        res.unwrap()
-            .messages
-            .unwrap()
-            .iter()
-            .map(|m| m.body.as_ref().unwrap().clone())
-            .collect()
-    }
-
-    async fn delete_queue(repository: &KeyRepository) -> Result<()> {
-        repository
-            .sqs_client
-            .delete_queue(DeleteQueueRequest {
-                queue_url: repository.queue_url.clone(),
-                ..Default::default()
-            })
-            .await?;
-        Ok(())
+    fn init() {
+        let _ = env_logger::builder().is_test(true).try_init();
     }
 
     #[tokio::test]
@@ -173,17 +129,25 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn roundtrip() {
+    async fn roundtrip() -> Result<()> {
+        init();
         let repository = KeyRepository::default();
-        create_queue(&repository)
-            .await
-            .expect("Failed to create queue: ");
+        let queue_id = repository
+            .pub_sub
+            .create_queue("default_queue_name".to_string())
+            .await?;
 
         let keys = repository.produce(1).await;
         repository.consume(keys[0].clone()).await.unwrap();
 
-        let messages = receive_message(&repository).await;
-        assert_eq!(vec![keys[0].to_string()], messages);
-        delete_queue(&repository).await.unwrap();
+        let messages = repository
+            .pub_sub
+            .receive_messages(queue_id.clone())
+            .await?;
+        assert_eq!(1, messages.len());
+        assert_eq!(keys[0].to_string(), messages[0].1);
+
+        repository.pub_sub.delete_queue(queue_id.clone()).await?;
+        Ok(())
     }
 }

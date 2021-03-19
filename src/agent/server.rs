@@ -72,6 +72,7 @@ mod tests {
         agent_service_client::AgentServiceClient, CreateKeysRequest, CreateKeysResponse,
         DeleteKeysRequest, DeleteKeysResponse,
     };
+    use crate::data::pub_sub::{PubSub, SqsPubSub};
     use crate::error::Result;
     use log::debug;
     use rusoto_core::Region;
@@ -92,46 +93,17 @@ mod tests {
             .expect("Client fails to connect: ")
     }
 
-    async fn create_queue() -> Result<CreateQueueResult> {
-        let region = Region::Custom {
-            name: "local".to_string(),
-            endpoint: "http://localhost:4566".to_string(),
-        };
-        let sqs_client = SqsClient::new(region);
-        let queue_name = "default_queue_name".to_string();
-        debug!("Creating queue with name: {}", queue_name);
-        let result = sqs_client
-            .create_queue(CreateQueueRequest {
-                queue_name,
-                ..Default::default()
-            })
-            .await?;
-        Ok(result)
-    }
-
-    async fn delete_queue() -> Result<()> {
-        let region = Region::Custom {
-            name: "local".to_string(),
-            endpoint: "http://localhost:4566".to_string(),
-        };
-        let sqs_client = SqsClient::new(region);
-        let queue_url = "http://localhost:4566/000000000000/default_queue_name".to_string();
-        debug!("Deleting queue with name: {}", queue_url);
-
-        sqs_client
-            .delete_queue(DeleteQueueRequest {
-                queue_url,
-                ..Default::default()
-            })
-            .await?;
-        Ok(())
-    }
-
     #[tokio::test]
     #[serial]
-    async fn create_delete_keys_roundtrip() {
+    async fn create_delete_keys_roundtrip() -> Result<()> {
         init();
-        create_queue().await.unwrap();
+        let pub_sub = SqsPubSub::new(Region::Custom {
+            name: "local".to_string(),
+            endpoint: "http://localhost:4566".to_string(),
+        });
+        let queue_id = pub_sub
+            .create_queue("default_queue_name".to_string())
+            .await?;
         let task = task::spawn_blocking(|| async { super::run_server().await })
             .await
             .unwrap();
@@ -154,6 +126,7 @@ mod tests {
             .await
             .unwrap();
         // Struct is empty. Nothing to assert on.
-        delete_queue().await.unwrap();
+        pub_sub.delete_queue(queue_id).await?;
+        Ok(())
     }
 }
