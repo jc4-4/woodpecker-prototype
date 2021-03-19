@@ -40,7 +40,7 @@ impl AgentService for WoodpeckerAgentService {
         for key in request.into_inner().keys {
             debug!("Deleting key: {}", key);
             self.repository
-                .consume(SignedKey { value: key })
+                .consume(vec![SignedKey { value: key }])
                 .await
                 .unwrap();
         }

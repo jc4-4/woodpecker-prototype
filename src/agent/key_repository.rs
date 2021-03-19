@@ -87,10 +87,10 @@ impl KeyRepository {
         keys
     }
 
-    // TODO: batch consume
-    pub async fn consume(&self, key: SignedKey) -> Result<()> {
+    pub async fn consume(&self, keys: Vec<SignedKey>) -> Result<()> {
+        let messages = keys.iter().map(|sk| sk.to_string()).collect();
         self.pub_sub
-            .send_messages(self.queue_url.clone(), vec![key.to_string()])
+            .send_messages(self.queue_url.clone(), messages)
             .await?;
         Ok(())
     }
@@ -138,7 +138,7 @@ mod tests {
             .await?;
 
         let keys = repository.produce(1).await;
-        repository.consume(keys[0].clone()).await.unwrap();
+        repository.consume(keys.clone()).await.unwrap();
 
         let messages = repository
             .pub_sub
