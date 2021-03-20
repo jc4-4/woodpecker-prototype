@@ -1288,6 +1288,7 @@ dependencies = [
  "arrow",
  "async-stream",
  "async-trait",
+ "bytes",
  "env_logger",
  "futures",
  "log",
