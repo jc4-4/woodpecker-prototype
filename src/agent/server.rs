@@ -118,7 +118,7 @@ mod tests {
         let keys = res.into_inner().keys;
         assert_eq!(5, keys.len());
         for key in keys.clone() {
-            assert!(key.starts_with("http://localhost:4566/default_bucket/"));
+            assert!(key.starts_with("http://localhost:4566/default-bucket/"));
         }
 
         let _res: Response<DeleteKeysResponse> = client

@@ -31,7 +31,7 @@ pub struct S3BlobStore {
 }
 
 impl S3BlobStore {
-    fn new(region: Region) -> S3BlobStore {
+    pub fn new(region: Region) -> S3BlobStore {
         S3BlobStore {
             s3_client: S3Client::new(region),
         }
@@ -78,6 +78,7 @@ impl BlobStore for S3BlobStore {
             key: key.clone(),
             ..Default::default()
         };
+        debug!("Get object under bucket {} with key {}", bucket, key);
         let res = self.s3_client.get_object(req).await?;
         let stream = res.body.unwrap();
         let y: BytesMut = stream
@@ -85,7 +86,6 @@ impl BlobStore for S3BlobStore {
             .try_concat()
             .await
             .unwrap();
-        debug!("Get object under bucket {} with key {}", bucket, key);
         Ok(y.freeze())
     }
 

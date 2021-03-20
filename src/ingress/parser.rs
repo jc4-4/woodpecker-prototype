@@ -2,7 +2,7 @@ use arrow::array::{ArrayRef, StringBuilder};
 use arrow::compute::cast;
 use arrow::datatypes::SchemaRef;
 use arrow::record_batch::RecordBatch;
-
+use log::debug;
 use regex::Regex;
 use std::sync::Arc;
 
@@ -19,7 +19,7 @@ impl Parser {
         }
     }
 
-    fn parse(&self, lines: Vec<&str>) -> RecordBatch {
+    pub fn parse(&self, lines: Vec<&str>) -> RecordBatch {
         // Create builders for each column
         let fields = self.schema.fields();
         let cols = fields.len();
@@ -30,6 +30,7 @@ impl Parser {
 
         // Write columns to each builder
         for line in lines {
+            debug!("Parsing line: {}", line);
             let caps = self.regex.captures(line).unwrap();
             for i in 0..cols {
                 match caps.name(fields[i].name()) {

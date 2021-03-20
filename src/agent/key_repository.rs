@@ -38,7 +38,7 @@ fn new_key() -> String {
 
 // https://s3.amazonaws.com/bucket/key.xyz?X-Amz-...
 // => key.xyz
-fn get_key(bucket: &str, key: &SignedKey) -> String {
+pub fn get_key(bucket: &str, key: &SignedKey) -> String {
     let url = key.to_string();
     let i = url.find(bucket).expect("presigned url has bucket name");
     let j = url.find("?").expect("presigned url has ?");
@@ -56,7 +56,7 @@ impl Default for KeyRepository {
             endpoint: "http://localhost:4566".to_string(),
         };
         KeyRepository::new(
-            "default_bucket".to_string(),
+            "default-bucket".to_string(),
             "http://localhost:4566/000000000000/default_queue_name".to_string(),
             region.clone(),
             AwsCredentials::default(),

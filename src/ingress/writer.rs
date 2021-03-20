@@ -5,8 +5,8 @@ use parquet::file::writer::InMemoryWriteableCursor;
 use uuid::Uuid;
 
 pub struct File {
-    name: String,
-    content: Vec<u8>,
+    pub name: String,
+    pub content: Vec<u8>,
 }
 
 pub struct Writer {
@@ -18,7 +18,7 @@ impl Writer {
         Writer { schema }
     }
 
-    fn write(&self, record_batch: RecordBatch) -> File {
+    pub fn write(&self, record_batch: RecordBatch) -> File {
         let cursor = InMemoryWriteableCursor::default();
         let mut writer = ArrowWriter::try_new(cursor.clone(), self.schema.clone(), None).unwrap();
         writer.write(&record_batch).unwrap();
@@ -26,7 +26,7 @@ impl Writer {
 
         // TODO: use column stats to generate name.
         File {
-            name: Uuid::new_v4().to_string(),
+            name: format!("parquet-{}", Uuid::new_v4()).to_string(),
             content: cursor.data(),
         }
     }
