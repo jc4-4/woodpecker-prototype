@@ -74,7 +74,7 @@ mod tests {
     };
     use crate::data::pub_sub::{PubSub, SqsPubSub};
     use crate::error::Result;
-    use log::debug;
+
     use rusoto_core::Region;
     use rusoto_sqs::{CreateQueueRequest, CreateQueueResult, DeleteQueueRequest, Sqs, SqsClient};
     use serial_test::serial;

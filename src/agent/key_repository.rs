@@ -4,7 +4,7 @@ use rusoto_core::Region;
 use rusoto_credential::AwsCredentials;
 use rusoto_s3::util::{PreSignedRequest, PreSignedRequestOption};
 use rusoto_s3::PutObjectRequest;
-use rusoto_sqs::{SendMessageRequest, Sqs, SqsClient};
+
 use std::fmt;
 use uuid::Uuid;
 
@@ -101,9 +101,7 @@ mod tests {
     use super::KeyRepository;
     use crate::data::pub_sub::PubSub;
     use crate::error::Result;
-    use rusoto_sqs::{
-        CreateQueueRequest, CreateQueueResult, DeleteQueueRequest, ReceiveMessageRequest, Sqs,
-    };
+    use rusoto_sqs::Sqs;
     use serial_test::serial;
 
     fn init() {

@@ -1,7 +1,7 @@
 use crate::error::Result;
 use async_trait::async_trait;
 use bytes::{Bytes, BytesMut};
-use futures::{StreamExt, TryStreamExt};
+use futures::TryStreamExt;
 use log::debug;
 use rusoto_core::Region;
 use rusoto_s3::{
