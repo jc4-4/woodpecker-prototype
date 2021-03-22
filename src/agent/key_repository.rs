@@ -36,6 +36,18 @@ fn new_key() -> String {
     Uuid::new_v4().to_string()
 }
 
+// https://s3.amazonaws.com/bucket/key.xyz?X-Amz-...
+// => key.xyz
+fn get_key(bucket: &str, key: &SignedKey) -> String {
+    let url = key.to_string();
+    let i = url.find(bucket).expect("presigned url has bucket name");
+    let j = url.find("?").expect("presigned url has ?");
+    // https://s3.amazonaws.com/bucket/key.xyz?X-Amz-...
+    //                         ^              ^
+    //                         i              j
+    url[i+bucket.len()+1..j].to_string()
+}
+
 /// Default to use localstack at port 4566.
 impl Default for KeyRepository {
     fn default() -> Self {
@@ -68,6 +80,7 @@ impl KeyRepository {
         }
     }
 
+    /// Generate a presigned url for agent.
     pub async fn produce(&self, n: usize) -> Vec<SignedKey> {
         let mut keys = Vec::with_capacity(n);
         for _ in 0..n {
@@ -87,20 +100,23 @@ impl KeyRepository {
         keys
     }
 
+    /// Convert a presigned url to a task.
     pub async fn consume(&self, keys: Vec<SignedKey>) -> Result<()> {
-        let messages = keys.iter().map(|sk| sk.to_string()).collect();
+        let messages = keys.iter().map(|sk| get_key(&self.bucket, sk)).collect();
         self.pub_sub
             .send_messages(self.queue_url.clone(), messages)
             .await?;
         Ok(())
     }
+
 }
 
 #[cfg(test)]
 mod tests {
-    use super::KeyRepository;
+    use super::*;
     use crate::data::pub_sub::PubSub;
     use crate::error::Result;
+    use log::debug;
     use rusoto_sqs::Sqs;
     use serial_test::serial;
 
@@ -117,12 +133,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_one() {
+        init();
         let repository = KeyRepository::default();
         let keys = repository.produce(1).await;
         assert_eq!(1, keys.len());
+        debug!("{}", keys[0]);
         assert!(keys[0]
             .to_string()
-            .starts_with("http://localhost:4566/default_bucket/"));
+            .starts_with("http://localhost:4566/default-bucket/"));
     }
 
     #[tokio::test]
@@ -143,9 +161,18 @@ mod tests {
             .receive_messages(queue_id.clone())
             .await?;
         assert_eq!(1, messages.len());
-        assert_eq!(keys[0].to_string(), messages[0].1);
+        assert_eq!(get_key(&repository.bucket, &keys[0]), messages[0].1);
 
         repository.pub_sub.delete_queue(queue_id.clone()).await?;
         Ok(())
+    }
+
+    #[test]
+    fn key() {
+        let signed_key = SignedKey {
+            value: "http://localhost:4566/default-bucket/d4683880-f813-40f6-a923-675739a0902e?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=%2F20210322%2Flocal%2Fs3%2Faws4_request&X-Amz-Date=20210322T050314Z&X-Amz-Expires=3600&X-Amz-Signature=3d21b0d16ce021b3244c0f73bd84b092228e96488c6fdb1c62c6d67b6dd10733&X-Amz-SignedHeaders=host".to_string(),
+        };
+
+        assert_eq!("d4683880-f813-40f6-a923-675739a0902e", get_key("default-bucket", &signed_key));
     }
 }
