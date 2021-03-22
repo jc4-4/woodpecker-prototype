@@ -1,15 +1,13 @@
-use crate::data::blob_store::{S3BlobStore, BlobStore};
-use crate::data::pub_sub::{SqsPubSub, PubSub};
+use crate::data::blob_store::{BlobStore, S3BlobStore};
+use crate::data::pub_sub::{PubSub, SqsPubSub};
+use crate::error::Result;
 use crate::ingress::parser::Parser;
 use crate::ingress::schema::SchemaRepository;
 use crate::ingress::writer::Writer;
-use crate::error::Result;
 use log::debug;
 use rusoto_core::Region;
-use rusoto_s3::S3Client;
+
 use rusoto_s3::StreamingBody;
-use rusoto_sqs::SqsClient;
-use std::sync::Arc;
 
 /// Receive message from a queue for files to parse.
 /// Then write the parsed files to the bucket.
@@ -38,11 +36,7 @@ impl Default for IngressService {
 }
 
 impl IngressService {
-    fn new(
-        bucket: String,
-        queue_url: String,
-        region: Region,
-    ) -> IngressService {
+    fn new(bucket: String, queue_url: String, region: Region) -> IngressService {
         IngressService {
             bucket,
             queue_url,
@@ -54,7 +48,10 @@ impl IngressService {
 
     /// Process tasks from queue and delete them afterwards.
     async fn process_tasks(&self) -> Result<Vec<String>> {
-        let messages = self.pub_sub.receive_messages(self.queue_url.clone()).await?;
+        let messages = self
+            .pub_sub
+            .receive_messages(self.queue_url.clone())
+            .await?;
         if messages.is_empty() {
             return Ok(vec![]);
         }
@@ -67,16 +64,24 @@ impl IngressService {
             files.push(file);
         }
 
-        self.pub_sub.delete_messages(self.queue_url.clone(), ids).await?;
+        self.pub_sub
+            .delete_messages(self.queue_url.clone(), ids)
+            .await?;
         Ok(files)
     }
 
     /// Work on a single task - download, parser, write, and upload.
     async fn work(&self, message: String) -> Result<String> {
         debug!("Working on message: {}", &message);
-        let blob = self.blob_store.get_object(self.bucket.clone(), message.clone()).await?;
+        let blob = self
+            .blob_store
+            .get_object(self.bucket.clone(), message.clone())
+            .await?;
         // TODO: extract schema from message instead of hardcode
-        let schema = self.schema_repository.get_schema("RUST_SINGLE_LINE").await?;
+        let schema = self
+            .schema_repository
+            .get_schema("RUST_SINGLE_LINE")
+            .await?;
         let parser = Parser::new(schema.regex.as_str(), schema.arrow_schema.clone());
         // TODO: split by log type, e.g. NEW_LINE vs START_WITH etc.
         let utf8 = String::from_utf8(blob.to_vec()).unwrap();
@@ -84,24 +89,31 @@ impl IngressService {
         let batch = parser.parse(lines);
         let writer = Writer::new(schema.arrow_schema.clone());
         let file = writer.write(batch);
-        self.blob_store.put_object(self.bucket.clone(), file.name.clone(),
-                                   StreamingBody::from(file.content)).await?;
+        self.blob_store
+            .put_object(
+                self.bucket.clone(),
+                file.name.clone(),
+                StreamingBody::from(file.content),
+            )
+            .await?;
         // TODO: extract bucket from message
-        self.blob_store.delete_object(self.bucket.clone(), message).await?;
+        self.blob_store
+            .delete_object(self.bucket.clone(), message)
+            .await?;
         Ok(file.name)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::agent::key_repository::{KeyRepository, get_key};
-    use crate::ingress::schema::Schema;
     use super::*;
-    use arrow::array::StringArray;
+    use crate::agent::key_repository::{get_key, KeyRepository};
+    use crate::ingress::schema::Schema;
+
     use log::debug;
-    use parquet::arrow::{ParquetFileArrowReader, ArrowReader};
-    use parquet::file::serialized_reader::{SliceableCursor, SerializedFileReader};
-    use rusoto_s3::StreamingBody;
+    use parquet::arrow::{ArrowReader, ParquetFileArrowReader};
+    use parquet::file::serialized_reader::{SerializedFileReader, SliceableCursor};
+
     use serial_test::serial;
     use std::sync::Arc;
 
@@ -127,46 +139,74 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn roundtrip() -> Result<()>  {
+    async fn roundtrip() -> Result<()> {
         init();
         let mut service = IngressService::default();
-        service.blob_store.create_bucket(service.bucket.clone()).await?;
-        service.pub_sub.create_queue("default_queue_name".to_string()).await?;
+        service
+            .blob_store
+            .create_bucket(service.bucket.clone())
+            .await?;
+        service
+            .pub_sub
+            .create_queue("default_queue_name".to_string())
+            .await?;
         let key_repository = KeyRepository::default();
         let keys = key_repository.produce(1).await;
         let bytes = b"f=oo".to_vec();
         upload_presigned(&keys[0].to_string(), bytes).await?;
-        let blob = service.blob_store.get_object(service.bucket.clone(), get_key(&service.bucket, &keys[0])).await?;
+        let blob = service
+            .blob_store
+            .get_object(service.bucket.clone(), get_key(&service.bucket, &keys[0]))
+            .await?;
         debug!("Blob: {:?}", blob.to_vec());
         key_repository.consume(keys).await?;
 
         // create schema
-        let schema = Schema::new("f=(?P<f>\\w+)",
-            Arc::new(ArrowSchema::new(vec![
-                ArrowField::new("f", ArrowDataType::Utf8, false),
-            ])));
+        let schema = Schema::new(
+            "f=(?P<f>\\w+)",
+            Arc::new(ArrowSchema::new(vec![ArrowField::new(
+                "f",
+                ArrowDataType::Utf8,
+                false,
+            )])),
+        );
 
-        service.schema_repository.put_schema("RUST_SINGLE_LINE", schema).await?;
+        service
+            .schema_repository
+            .put_schema("RUST_SINGLE_LINE", schema)
+            .await?;
 
         let files = service.process_tasks().await?;
         assert_eq!(1, files.len());
 
-        let bytes = service.blob_store.get_object(service.bucket.clone(), files[0].to_string().clone()).await?;
+        let bytes = service
+            .blob_store
+            .get_object(service.bucket.clone(), files[0].to_string().clone())
+            .await?;
         let cursor = SliceableCursor::new(bytes.to_vec());
         let reader = SerializedFileReader::new(cursor).unwrap();
         let mut arrow_reader = ParquetFileArrowReader::new(Arc::new(reader));
         let mut reader = arrow_reader.get_record_reader(1024).unwrap();
         let actual_batch = reader
-                .next()
-                .expect("No batch found")
-                .expect("Unable to get batch");
+            .next()
+            .expect("No batch found")
+            .expect("Unable to get batch");
         assert_eq!(1, actual_batch.num_columns());
         assert_eq!(1, actual_batch.num_rows());
         debug!("Actual_batch: {:#?}", actual_batch);
 
-        service.pub_sub.delete_queue(service.queue_url.clone()).await?;
-        service.blob_store.delete_object(service.bucket.clone(), files[0].to_string().clone()).await?;
-        service.blob_store.delete_bucket(service.bucket.clone()).await?;
+        service
+            .pub_sub
+            .delete_queue(service.queue_url.clone())
+            .await?;
+        service
+            .blob_store
+            .delete_object(service.bucket.clone(), files[0].to_string().clone())
+            .await?;
+        service
+            .blob_store
+            .delete_bucket(service.bucket.clone())
+            .await?;
         Ok(())
     }
 }

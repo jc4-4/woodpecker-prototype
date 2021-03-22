@@ -45,7 +45,7 @@ pub fn get_key(bucket: &str, key: &SignedKey) -> String {
     // https://s3.amazonaws.com/bucket/key.xyz?X-Amz-...
     //                         ^              ^
     //                         i              j
-    url[i+bucket.len()+1..j].to_string()
+    url[i + bucket.len() + 1..j].to_string()
 }
 
 /// Default to use localstack at port 4566.
@@ -108,7 +108,6 @@ impl KeyRepository {
             .await?;
         Ok(())
     }
-
 }
 
 #[cfg(test)]
@@ -173,6 +172,9 @@ mod tests {
             value: "http://localhost:4566/default-bucket/d4683880-f813-40f6-a923-675739a0902e?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=%2F20210322%2Flocal%2Fs3%2Faws4_request&X-Amz-Date=20210322T050314Z&X-Amz-Expires=3600&X-Amz-Signature=3d21b0d16ce021b3244c0f73bd84b092228e96488c6fdb1c62c6d67b6dd10733&X-Amz-SignedHeaders=host".to_string(),
         };
 
-        assert_eq!("d4683880-f813-40f6-a923-675739a0902e", get_key("default-bucket", &signed_key));
+        assert_eq!(
+            "d4683880-f813-40f6-a923-675739a0902e",
+            get_key("default-bucket", &signed_key)
+        );
     }
 }

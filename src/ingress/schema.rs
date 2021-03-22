@@ -57,8 +57,7 @@ impl SchemaRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rusoto_core::Region;
-    use serial_test::serial;
+
     use std::sync::Arc;
 
     fn init() {
