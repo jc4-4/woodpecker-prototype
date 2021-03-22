@@ -1,9 +1,7 @@
 use crate::error::{woodpecker_error, Result};
-use arrow::datatypes;
 use std::collections::HashMap;
 
-type ArrowSchema = datatypes::Schema;
-type ArrowSchemaRef = datatypes::SchemaRef;
+type ArrowSchemaRef = arrow::datatypes::SchemaRef;
 
 /// A schema consist of a regex and an arrow schema.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,6 +27,7 @@ pub struct SchemaRepository {
 }
 
 impl SchemaRepository {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> SchemaRepository {
         SchemaRepository {
             repository: HashMap::new(),
@@ -57,7 +56,7 @@ impl SchemaRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    type ArrowSchema = arrow::datatypes::Schema;
     use std::sync::Arc;
 
     fn init() {

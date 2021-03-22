@@ -36,18 +36,18 @@ impl Default for IngressService {
 }
 
 impl IngressService {
-    fn new(bucket: String, queue_url: String, region: Region) -> IngressService {
+    pub fn new(bucket: String, queue_url: String, region: Region) -> IngressService {
         IngressService {
             bucket,
             queue_url,
             schema_repository: SchemaRepository::new(),
             blob_store: S3BlobStore::new(region.clone()),
-            pub_sub: SqsPubSub::new(region.clone()),
+            pub_sub: SqsPubSub::new(region),
         }
     }
 
     /// Process tasks from queue and delete them afterwards.
-    async fn process_tasks(&self) -> Result<Vec<String>> {
+    pub async fn process_tasks(&self) -> Result<Vec<String>> {
         let messages = self
             .pub_sub
             .receive_messages(self.queue_url.clone())
@@ -85,7 +85,7 @@ impl IngressService {
         let parser = Parser::new(schema.regex.as_str(), schema.arrow_schema.clone());
         // TODO: split by log type, e.g. NEW_LINE vs START_WITH etc.
         let utf8 = String::from_utf8(blob.to_vec()).unwrap();
-        let lines = utf8.split("\n").collect();
+        let lines = utf8.split('\n').collect();
         let batch = parser.parse(lines);
         let writer = Writer::new(schema.arrow_schema.clone());
         let file = writer.write(batch);

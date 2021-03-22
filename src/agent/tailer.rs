@@ -15,7 +15,7 @@ pub struct Tailer<'a> {
 }
 
 impl Tailer<'_> {
-    fn try_new(path: &str, buffer_size: usize) -> Result<Tailer> {
+    pub fn try_new(path: &str, buffer_size: usize) -> Result<Tailer> {
         let path = Path::new(path);
         let file = File::open(path)?;
         Ok(Tailer {
@@ -25,7 +25,7 @@ impl Tailer<'_> {
         })
     }
 
-    fn read(&mut self) -> Result<Option<&[u8]>> {
+    pub fn read(&mut self) -> Result<Option<&[u8]>> {
         let bytes = self.file.read(&mut *self.buffer)?;
         if bytes == 0 {
             Ok(None)
@@ -34,13 +34,13 @@ impl Tailer<'_> {
         }
     }
 
-    fn rotate(&mut self) -> Result<()> {
+    pub fn rotate(&mut self) -> Result<()> {
         // TODO check is_rotated
         self.file = File::open(self.path)?;
         Ok(())
     }
 
-    fn is_rotated(&self) -> Result<bool> {
+    pub fn is_rotated(&self) -> Result<bool> {
         let file_handle = Handle::from_file(self.file.try_clone()?)?;
         let path_handle = Handle::from_path(self.path)?;
         Ok(file_handle != path_handle)
@@ -52,8 +52,8 @@ mod tests {
     use crate::agent::tailer::Tailer;
     use log::debug;
 
-    use std::fs::{create_dir_all, remove_file, rename, File, OpenOptions};
-    use std::io::{Read, Write};
+    use std::fs::{rename, File};
+    use std::io::Write;
 
     use std::str::from_utf8;
     use tempfile::NamedTempFile;

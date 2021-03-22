@@ -4,6 +4,6 @@ pub mod protobuf {
     include!(concat!(env!("OUT_DIR"), "/woodpecker.protobuf.rs"));
 }
 
-mod client;
-mod server;
-mod tailer;
+pub mod client;
+pub mod server;
+pub mod tailer;

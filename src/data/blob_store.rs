@@ -114,6 +114,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn roundtrip() -> Result<()> {
+        init();
         let blob_store = S3BlobStore::new(Region::Custom {
             name: "local".to_string(),
             endpoint: "http://localhost:4566".to_string(),

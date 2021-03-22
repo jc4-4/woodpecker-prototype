@@ -41,7 +41,7 @@ fn new_key() -> String {
 pub fn get_key(bucket: &str, key: &SignedKey) -> String {
     let url = key.to_string();
     let i = url.find(bucket).expect("presigned url has bucket name");
-    let j = url.find("?").expect("presigned url has ?");
+    let j = url.find('?').expect("presigned url has ?");
     // https://s3.amazonaws.com/bucket/key.xyz?X-Amz-...
     //                         ^              ^
     //                         i              j
@@ -58,7 +58,7 @@ impl Default for KeyRepository {
         KeyRepository::new(
             "default-bucket".to_string(),
             "http://localhost:4566/000000000000/default_queue_name".to_string(),
-            region.clone(),
+            region,
             AwsCredentials::default(),
         )
     }
@@ -116,7 +116,6 @@ mod tests {
     use crate::data::pub_sub::PubSub;
     use crate::error::Result;
     use log::debug;
-    use rusoto_sqs::Sqs;
     use serial_test::serial;
 
     fn init() {

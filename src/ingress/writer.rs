@@ -26,7 +26,7 @@ impl Writer {
 
         // TODO: use column stats to generate name.
         File {
-            name: format!("parquet-{}", Uuid::new_v4()).to_string(),
+            name: format!("parquet-{}", Uuid::new_v4()),
             content: cursor.data(),
         }
     }

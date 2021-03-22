@@ -54,7 +54,6 @@ impl PubSub for SqsPubSub {
     async fn delete_queue(&self, queue_id: String) -> Result<()> {
         let req = DeleteQueueRequest {
             queue_url: queue_id.clone(),
-            ..Default::default()
         };
         debug!("Delete queue with id: {}", queue_id);
         Ok(self.sqs_client.delete_queue(req).await?)
@@ -74,10 +73,10 @@ impl PubSub for SqsPubSub {
             Ok(())
         } else {
             let mut entries = Vec::with_capacity(messages.len());
-            for i in 0..messages.len() {
+            for (i, message) in messages.iter().enumerate() {
                 entries.push(SendMessageBatchRequestEntry {
                     id: i.to_string(),
-                    message_body: messages[i].clone(),
+                    message_body: message.clone(),
                     ..Default::default()
                 });
             }
@@ -85,7 +84,6 @@ impl PubSub for SqsPubSub {
             let req = SendMessageBatchRequest {
                 queue_url: queue_id,
                 entries,
-                ..Default::default()
             };
 
             // TODO: batch by number (up to 10) or size (up to 256KB)
@@ -104,8 +102,7 @@ impl PubSub for SqsPubSub {
         let res = self.sqs_client.receive_message(req).await?;
         let messages = res.messages.unwrap_or_default();
         let mut v = Vec::with_capacity(messages.len());
-        for i in 0..messages.len() {
-            let message = &messages[i];
+        for message in &messages {
             let message_id = message.receipt_handle.as_ref().unwrap().clone();
             let body = message.body.as_ref().unwrap().clone();
             v.push((message_id, body));
@@ -127,25 +124,22 @@ impl PubSub for SqsPubSub {
             let req = DeleteMessageRequest {
                 queue_url: queue_id,
                 receipt_handle: message_ids[0].clone(),
-                ..Default::default()
             };
             Ok(self.sqs_client.delete_message(req).await?)
         } else {
             // TODO: batch by number (up to 10) or size (up to 256KB)
             // TODO: retry partial failures
             let mut entries = Vec::with_capacity(message_ids.len());
-            for i in 0..message_ids.len() {
+            for (i, message) in message_ids.iter().enumerate() {
                 entries.push(DeleteMessageBatchRequestEntry {
                     id: i.to_string(),
-                    receipt_handle: message_ids[i].clone(),
-                    ..Default::default()
+                    receipt_handle: message.clone(),
                 });
             }
 
             let req = DeleteMessageBatchRequest {
                 queue_url: queue_id,
                 entries,
-                ..Default::default()
             };
             self.sqs_client.delete_message_batch(req).await?;
             Ok(())
@@ -166,6 +160,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn roundtrip() -> Result<()> {
+        init();
         let pub_sub = SqsPubSub::new(Region::Custom {
             name: "local".to_string(),
             endpoint: "http://localhost:4566".to_string(),

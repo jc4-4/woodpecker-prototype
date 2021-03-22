@@ -76,7 +76,6 @@ mod tests {
     use crate::error::Result;
 
     use rusoto_core::Region;
-    use rusoto_sqs::{CreateQueueRequest, CreateQueueResult, DeleteQueueRequest, Sqs, SqsClient};
     use serial_test::serial;
     use tokio::task;
     use tokio::time::{sleep, Duration};
