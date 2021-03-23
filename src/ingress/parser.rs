@@ -5,6 +5,7 @@ use arrow::record_batch::RecordBatch;
 use log::debug;
 use regex::Regex;
 use std::sync::Arc;
+use bytes::Bytes;
 
 pub struct Parser {
     schema: SchemaRef,
@@ -19,7 +20,14 @@ impl Parser {
         }
     }
 
-    pub fn parse(&self, lines: Vec<&str>) -> RecordBatch {
+    pub fn parse(&self, bytes: Bytes) -> RecordBatch {
+        // TODO: split by log type, e.g. NEW_LINE vs START_WITH etc.
+        let utf8 = String::from_utf8(bytes.to_vec()).unwrap();
+        let lines = utf8.split('\n').collect();
+        self.parse_lines(lines)
+    }
+
+    fn parse_lines(&self, lines: Vec<&str>) -> RecordBatch {
         // Create builders for each column
         let fields = self.schema.fields();
         let cols = fields.len();
@@ -80,7 +88,7 @@ mod tests {
             ])),
         );
 
-        let record_batch = parser.parse(vec!["f=o1,b=ar", "f=o2,b=99", "f=o3,b="]);
+        let record_batch = parser.parse("f=o1,b=ar\nf=o2,b=99\nf=o3,b=".into());
         assert_eq!(3, record_batch.num_rows());
         assert_eq!(2, record_batch.num_columns());
         assert_eq!(
@@ -137,7 +145,7 @@ mod tests {
             ])),
         );
 
-        let record_batch = parser.parse(vec!["f=oo,b=ar"]);
+        let record_batch = parser.parse("f=oo,b=ar".into());
         assert_eq!(1, record_batch.num_rows());
         debug!("{:#?}", record_batch);
 

@@ -83,10 +83,7 @@ impl IngressService {
             .get_schema("RUST_SINGLE_LINE")
             .await?;
         let parser = Parser::new(schema.regex.as_str(), schema.arrow_schema.clone());
-        // TODO: split by log type, e.g. NEW_LINE vs START_WITH etc.
-        let utf8 = String::from_utf8(blob.to_vec()).unwrap();
-        let lines = utf8.split('\n').collect();
-        let batch = parser.parse(lines);
+        let batch = parser.parse(blob);
         let writer = Writer::new(schema.arrow_schema.clone());
         let file = writer.write(batch);
         self.blob_store
