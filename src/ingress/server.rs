@@ -104,7 +104,7 @@ impl IngressService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent::key_repository::{get_key, KeyRepository};
+    use crate::agent::presigned_url_repository::{get_key, PresignedUrlRepository};
     use crate::ingress::schema::Schema;
 
     use log::debug;
@@ -147,7 +147,7 @@ mod tests {
             .pub_sub
             .create_queue("default_queue_name".to_string())
             .await?;
-        let key_repository = KeyRepository::default();
+        let key_repository = PresignedUrlRepository::default();
         let keys = key_repository.produce(1).await;
         let bytes = b"f=oo".to_vec();
         upload_presigned(&keys[0].to_string(), bytes).await?;

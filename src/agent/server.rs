@@ -1,4 +1,4 @@
-use crate::agent::key_repository::{KeyRepository, SignedKey};
+use crate::agent::presigned_url_repository::{PresignedUrlRepository, PresignedUrl};
 use crate::agent::protobuf::{
     agent_service_server::{AgentService, AgentServiceServer},
     CreateKeysRequest, CreateKeysResponse, DeleteKeysRequest, DeleteKeysResponse,
@@ -11,7 +11,7 @@ use tonic::{transport::Server, Request, Response, Status};
 
 #[derive(Clone, Default)]
 pub struct WoodpeckerAgentService {
-    repository: Arc<KeyRepository>,
+    repository: Arc<PresignedUrlRepository>,
 }
 
 #[tonic::async_trait]
@@ -28,7 +28,7 @@ impl AgentService for WoodpeckerAgentService {
         _request: Request<CreateKeysRequest>,
     ) -> std::result::Result<Response<CreateKeysResponse>, Status> {
         let keys = self.repository.produce(5).await;
-        let values = keys.iter().map(SignedKey::to_string).collect();
+        let values = keys.iter().map(PresignedUrl::to_string).collect();
         debug!("Created keys: {:?}", values);
         Ok(Response::new(CreateKeysResponse { keys: values }))
     }
@@ -40,7 +40,7 @@ impl AgentService for WoodpeckerAgentService {
         for key in request.into_inner().keys {
             debug!("Deleting key: {}", key);
             self.repository
-                .consume(vec![SignedKey { value: key }])
+                .consume(vec![PresignedUrl { value: key }])
                 .await
                 .unwrap();
         }
