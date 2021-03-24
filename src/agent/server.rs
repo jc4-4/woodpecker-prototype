@@ -100,9 +100,7 @@ mod tests {
             name: "local".to_string(),
             endpoint: "http://localhost:4566".to_string(),
         });
-        let queue_id = pub_sub
-            .create_queue("default_queue_name".to_string())
-            .await?;
+        let queue_id = pub_sub.create_queue("default_queue_name").await?;
         let task = task::spawn_blocking(|| async { super::run_server().await })
             .await
             .unwrap();
@@ -125,7 +123,7 @@ mod tests {
             .await
             .unwrap();
         // Struct is empty. Nothing to assert on.
-        pub_sub.delete_queue(queue_id).await?;
+        pub_sub.delete_queue(&queue_id).await?;
         Ok(())
     }
 }

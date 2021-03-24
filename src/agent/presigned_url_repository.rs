@@ -103,7 +103,7 @@ impl PresignedUrlRepository {
             messages.push(json);
         }
         self.pub_sub
-            .send_messages(self.queue_url.clone(), messages)
+            .send_messages(&self.queue_url, messages)
             .await?;
         Ok(())
     }
@@ -147,21 +147,18 @@ mod tests {
         let repository = PresignedUrlRepository::default();
         let queue_id = repository
             .pub_sub
-            .create_queue("default_queue_name".to_string())
+            .create_queue("default_queue_name")
             .await?;
 
         let urls = repository.produce(1).await;
         repository.consume(urls.clone()).await.unwrap();
 
-        let messages = repository
-            .pub_sub
-            .receive_messages(queue_id.clone())
-            .await?;
+        let messages = repository.pub_sub.receive_messages(&queue_id).await?;
         assert_eq!(1, messages.len());
         let task: IngressTask = serde_json::from_str(&messages[0].1)?;
         assert_eq!(repository.bucket, task.bucket);
 
-        repository.pub_sub.delete_queue(queue_id.clone()).await?;
+        repository.pub_sub.delete_queue(&queue_id).await?;
         Ok(())
     }
 }

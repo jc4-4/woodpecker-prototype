@@ -12,16 +12,16 @@ use rusoto_sqs::{
 #[async_trait]
 pub trait PubSub {
     /// Create a queue with name. Returns a queue id.
-    async fn create_queue(&self, name: String) -> Result<String>;
+    async fn create_queue(&self, name: &str) -> Result<String>;
     /// Delete a queue by id.
-    async fn delete_queue(&self, queue_id: String) -> Result<()>;
+    async fn delete_queue(&self, queue_id: &str) -> Result<()>;
     /// Send messages to a queue.
-    async fn send_messages(&self, queue_id: String, messages: Vec<String>) -> Result<()>;
+    async fn send_messages(&self, queue_id: &str, messages: Vec<String>) -> Result<()>;
     /// Receive messages from a queue. Does not delete the messages.
     /// Returns both the message id and its content.
-    async fn receive_messages(&self, queue_id: String) -> Result<Vec<(String, String)>>;
+    async fn receive_messages(&self, queue_id: &str) -> Result<Vec<(String, String)>>;
     /// Delete messages previously received.
-    async fn delete_messages(&self, queue_id: String, message_ids: Vec<String>) -> Result<()>;
+    async fn delete_messages(&self, queue_id: &str, message_ids: Vec<String>) -> Result<()>;
 }
 
 /// A PubSub based on AWS SQS.
@@ -40,9 +40,9 @@ impl SqsPubSub {
 
 #[async_trait]
 impl PubSub for SqsPubSub {
-    async fn create_queue(&self, name: String) -> Result<String> {
+    async fn create_queue(&self, name: &str) -> Result<String> {
         let req = CreateQueueRequest {
-            queue_name: name.clone(),
+            queue_name: name.to_string(),
             ..Default::default()
         };
         let res = self.sqs_client.create_queue(req).await?;
@@ -51,21 +51,21 @@ impl PubSub for SqsPubSub {
         Ok(queue_id)
     }
 
-    async fn delete_queue(&self, queue_id: String) -> Result<()> {
+    async fn delete_queue(&self, queue_id: &str) -> Result<()> {
         let req = DeleteQueueRequest {
-            queue_url: queue_id.clone(),
+            queue_url: queue_id.to_string(),
         };
         debug!("Delete queue with id: {}", queue_id);
         Ok(self.sqs_client.delete_queue(req).await?)
     }
 
-    async fn send_messages(&self, queue_id: String, messages: Vec<String>) -> Result<()> {
+    async fn send_messages(&self, queue_id: &str, messages: Vec<String>) -> Result<()> {
         debug!("Sending to queue {} messages: {:?}", queue_id, messages);
         if messages.is_empty() {
             Ok(())
         } else if messages.len() == 1 {
             let req = SendMessageRequest {
-                queue_url: queue_id,
+                queue_url: queue_id.to_string(),
                 message_body: messages[0].clone(),
                 ..Default::default()
             };
@@ -82,7 +82,7 @@ impl PubSub for SqsPubSub {
             }
 
             let req = SendMessageBatchRequest {
-                queue_url: queue_id,
+                queue_url: queue_id.to_string(),
                 entries,
             };
 
@@ -93,9 +93,9 @@ impl PubSub for SqsPubSub {
         }
     }
 
-    async fn receive_messages(&self, queue_id: String) -> Result<Vec<(String, String)>> {
+    async fn receive_messages(&self, queue_id: &str) -> Result<Vec<(String, String)>> {
         let req = ReceiveMessageRequest {
-            queue_url: queue_id.clone(),
+            queue_url: queue_id.to_string(),
             max_number_of_messages: Some(10),
             ..Default::default()
         };
@@ -113,7 +113,7 @@ impl PubSub for SqsPubSub {
 
     // TODO: batch by number (up to 10) or size (up to 256KB)
     // TODO: handle retry
-    async fn delete_messages(&self, queue_id: String, message_ids: Vec<String>) -> Result<()> {
+    async fn delete_messages(&self, queue_id: &str, message_ids: Vec<String>) -> Result<()> {
         debug!(
             "Deleting from queue {} messages: {:?}",
             queue_id, message_ids
@@ -122,7 +122,7 @@ impl PubSub for SqsPubSub {
             Ok(())
         } else if message_ids.len() == 1 {
             let req = DeleteMessageRequest {
-                queue_url: queue_id,
+                queue_url: queue_id.to_string(),
                 receipt_handle: message_ids[0].clone(),
             };
             Ok(self.sqs_client.delete_message(req).await?)
@@ -138,7 +138,7 @@ impl PubSub for SqsPubSub {
             }
 
             let req = DeleteMessageBatchRequest {
-                queue_url: queue_id,
+                queue_url: queue_id.to_string(),
                 entries,
             };
             self.sqs_client.delete_message_batch(req).await?;
@@ -165,19 +165,19 @@ mod tests {
             name: "local".to_string(),
             endpoint: "http://localhost:4566".to_string(),
         });
-        let queue_id = pub_sub.create_queue("my_queue".to_string()).await?;
+        let queue_id = pub_sub.create_queue("my_queue").await?;
         pub_sub
-            .send_messages(queue_id.clone(), vec!["message".to_string()])
+            .send_messages(&queue_id, vec!["message".to_string()])
             .await?;
-        let recv = pub_sub.receive_messages(queue_id.clone()).await?;
+        let recv = pub_sub.receive_messages(&queue_id).await?;
         assert_eq!(1, recv.len());
         let (message_id, message_body) = &recv[0];
         assert_eq!("message", message_body);
-        assert!(pub_sub.receive_messages(queue_id.clone()).await?.is_empty());
+        assert!(pub_sub.receive_messages(&queue_id).await?.is_empty());
         pub_sub
-            .delete_messages(queue_id.clone(), vec![message_id.clone()])
+            .delete_messages(&queue_id, vec![message_id.clone()])
             .await?;
-        pub_sub.delete_queue(queue_id.clone()).await?;
+        pub_sub.delete_queue(&queue_id).await?;
         Ok(())
     }
 }

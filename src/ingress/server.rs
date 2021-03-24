@@ -49,10 +49,7 @@ impl IngressService {
 
     /// Process tasks from queue and delete them afterwards.
     pub async fn process_tasks(&self) -> Result<Vec<String>> {
-        let messages = self
-            .pub_sub
-            .receive_messages(self.queue_url.clone())
-            .await?;
+        let messages = self.pub_sub.receive_messages(&self.queue_url).await?;
         if messages.is_empty() {
             return Ok(vec![]);
         }
@@ -66,9 +63,7 @@ impl IngressService {
             files.push(file);
         }
 
-        self.pub_sub
-            .delete_messages(self.queue_url.clone(), ids)
-            .await?;
+        self.pub_sub.delete_messages(&self.queue_url, ids).await?;
         Ok(files)
     }
 
@@ -144,10 +139,7 @@ mod tests {
             .blob_store
             .create_bucket(service.bucket.clone())
             .await?;
-        service
-            .pub_sub
-            .create_queue("default_queue_name".to_string())
-            .await?;
+        service.pub_sub.create_queue("default_queue_name").await?;
         let key_repository = PresignedUrlRepository::default();
         let keys = key_repository.produce(1).await;
         let bytes = b"f=oo".to_vec();
@@ -194,10 +186,7 @@ mod tests {
         assert_eq!(1, actual_batch.num_rows());
         debug!("Actual_batch: {:#?}", actual_batch);
 
-        service
-            .pub_sub
-            .delete_queue(service.queue_url.clone())
-            .await?;
+        service.pub_sub.delete_queue(&service.queue_url).await?;
         service
             .blob_store
             .delete_object(service.bucket.clone(), files[0].to_string().clone())
