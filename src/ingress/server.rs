@@ -7,6 +7,7 @@ use crate::ingress::writer::Writer;
 use log::debug;
 use rusoto_core::Region;
 
+use crate::serde::ingress_task::IngressTask;
 use rusoto_s3::StreamingBody;
 
 /// Receive message from a queue for files to parse.
@@ -60,7 +61,8 @@ impl IngressService {
         let mut files = Vec::with_capacity(messages.len());
         for (id, message) in messages {
             ids.push(id);
-            let file = self.work(message).await?;
+            let task: IngressTask = serde_json::from_str(&message)?;
+            let file = self.work(task).await?;
             files.push(file);
         }
 
@@ -71,11 +73,11 @@ impl IngressService {
     }
 
     /// Work on a single task - download, parser, write, and upload.
-    async fn work(&self, message: String) -> Result<String> {
-        debug!("Working on message: {}", &message);
+    async fn work(&self, task: IngressTask) -> Result<String> {
+        debug!("Working on task: {:?}", &task);
         let blob = self
             .blob_store
-            .get_object(self.bucket.clone(), message.clone())
+            .get_object(task.bucket.clone(), task.key.clone())
             .await?;
         // TODO: extract schema from message instead of hardcode
         let schema = self
@@ -94,9 +96,7 @@ impl IngressService {
             )
             .await?;
         // TODO: extract bucket from message
-        self.blob_store
-            .delete_object(self.bucket.clone(), message)
-            .await?;
+        self.blob_store.delete_object(task.bucket, task.key).await?;
         Ok(file.name)
     }
 }
@@ -104,13 +104,14 @@ impl IngressService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent::presigned_url_repository::{get_key, PresignedUrlRepository};
+    use crate::agent::presigned_url_repository::{PresignedUrl, PresignedUrlRepository};
     use crate::ingress::schema::Schema;
 
     use log::debug;
     use parquet::arrow::{ArrowReader, ParquetFileArrowReader};
     use parquet::file::serialized_reader::{SerializedFileReader, SliceableCursor};
 
+    use crate::serde::ingress_task::IngressTask;
     use serial_test::serial;
     use std::sync::Arc;
 
@@ -150,11 +151,12 @@ mod tests {
         let key_repository = PresignedUrlRepository::default();
         let keys = key_repository.produce(1).await;
         let bytes = b"f=oo".to_vec();
-        upload_presigned(&keys[0].to_string(), bytes).await?;
-        let blob = service
-            .blob_store
-            .get_object(service.bucket.clone(), get_key(&service.bucket, &keys[0]))
-            .await?;
+        let url = keys[0].to_string();
+        upload_presigned(&url, bytes).await?;
+
+        let url = PresignedUrl::new(&url);
+        let task: IngressTask = url.into();
+        let blob = service.blob_store.get_object(task.bucket, task.key).await?;
         debug!("Blob: {:?}", blob.to_vec());
         key_repository.consume(keys).await?;
 

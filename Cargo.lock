@@ -1331,6 +1331,8 @@ dependencies = [
  "rusoto_s3",
  "rusoto_sqs",
  "same-file",
+ "serde",
+ "serde_json",
  "serial_test",
  "tempfile",
  "tokio",

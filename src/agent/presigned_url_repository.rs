@@ -1,10 +1,10 @@
 use crate::data::pub_sub::{PubSub, SqsPubSub};
 use crate::error::Result;
+use crate::serde::ingress_task::IngressTask;
 use rusoto_core::Region;
 use rusoto_credential::AwsCredentials;
 use rusoto_s3::util::{PreSignedRequest, PreSignedRequestOption};
 use rusoto_s3::PutObjectRequest;
-
 use std::fmt;
 use uuid::Uuid;
 
@@ -14,8 +14,8 @@ pub struct PresignedUrl {
     pub value: String,
 }
 
-impl PresignedUrl  {
-    fn new(value: &str) -> PresignedUrl {
+impl PresignedUrl {
+    pub fn new(value: &str) -> PresignedUrl {
         PresignedUrl {
             value: value.to_string(),
         }
@@ -41,18 +41,6 @@ pub struct PresignedUrlRepository {
 // Example: /bucket/account_id/agent_id/uuid
 fn new_key() -> String {
     Uuid::new_v4().to_string()
-}
-
-// https://s3.amazonaws.com/bucket/key.xyz?X-Amz-...
-// => key.xyz
-pub fn get_key(bucket: &str, url: &PresignedUrl) -> String {
-    let url = url.to_string();
-    let i = url.find(bucket).expect("presigned url has bucket name");
-    let j = url.find('?').expect("presigned url has ?");
-    // https://s3.amazonaws.com/bucket/key.xyz?X-Amz-...
-    //                         ^              ^
-    //                         i              j
-    url[i + bucket.len() + 1..j].to_string()
 }
 
 /// Default to use localstack at port 4566.
@@ -96,17 +84,24 @@ impl PresignedUrlRepository {
                 key: new_key(),
                 ..Default::default()
             };
-            let url = req.get_presigned_url(&self.region,
-                                            &self.credentials,
-                                            &PreSignedRequestOption::default());
+            let url = req.get_presigned_url(
+                &self.region,
+                &self.credentials,
+                &PreSignedRequestOption::default(),
+            );
             urls.push(PresignedUrl::new(&url));
         }
         urls
     }
 
     /// Client is done with the PresignedUrls. Convert them to tasks.
-    pub async fn consume(&self, keys: Vec<PresignedUrl>) -> Result<()> {
-        let messages = keys.iter().map(|sk| get_key(&self.bucket, sk)).collect();
+    pub async fn consume(&self, urls: Vec<PresignedUrl>) -> Result<()> {
+        let mut messages = Vec::with_capacity(urls.len());
+        for url in urls {
+            let task: IngressTask = url.into();
+            let json = serde_json::to_string(&task).expect("serialize to json string: ");
+            messages.push(json);
+        }
         self.pub_sub
             .send_messages(self.queue_url.clone(), messages)
             .await?;
@@ -163,20 +158,10 @@ mod tests {
             .receive_messages(queue_id.clone())
             .await?;
         assert_eq!(1, messages.len());
-        assert_eq!(get_key(&repository.bucket, &urls[0]), messages[0].1);
+        let task: IngressTask = serde_json::from_str(&messages[0].1)?;
+        assert_eq!(repository.bucket, task.bucket);
 
         repository.pub_sub.delete_queue(queue_id.clone()).await?;
         Ok(())
-    }
-
-    #[test]
-    fn key() {
-        let url = PresignedUrl::new(
-            "http://localhost:4566/default-bucket/d4683880-f813-40f6-a923-675739a0902e?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=%2F20210322%2Flocal%2Fs3%2Faws4_request&X-Amz-Date=20210322T050314Z&X-Amz-Expires=3600&X-Amz-Signature=3d21b0d16ce021b3244c0f73bd84b092228e96488c6fdb1c62c6d67b6dd10733&X-Amz-SignedHeaders=host");
-
-        assert_eq!(
-            "d4683880-f813-40f6-a923-675739a0902e",
-            get_key("default-bucket", &url)
-        );
     }
 }

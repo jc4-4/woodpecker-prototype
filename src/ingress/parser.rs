@@ -2,10 +2,10 @@ use arrow::array::{ArrayRef, StringBuilder};
 use arrow::compute::cast;
 use arrow::datatypes::SchemaRef;
 use arrow::record_batch::RecordBatch;
+use bytes::Bytes;
 use log::debug;
 use regex::Regex;
 use std::sync::Arc;
-use bytes::Bytes;
 
 pub struct Parser {
     schema: SchemaRef,

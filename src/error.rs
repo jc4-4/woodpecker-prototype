@@ -16,6 +16,7 @@ pub enum WoodpeckerError {
     GrpcError(tonic::Status),
     Internal(String),
     IoError(io::Error),
+    JsonError(serde_json::Error),
     NotImplemented(String),
     RusotoError(String), // Use String to workaround type parameter in RusotoError.
     TokioError(tokio::task::JoinError),
@@ -41,6 +42,12 @@ pub fn woodpecker_error(message: &str) -> WoodpeckerError {
 impl From<ArrowError> for WoodpeckerError {
     fn from(e: ArrowError) -> Self {
         WoodpeckerError::ArrowError(e)
+    }
+}
+
+impl From<serde_json::Error> for WoodpeckerError {
+    fn from(e: serde_json::Error) -> Self {
+        WoodpeckerError::JsonError(e)
     }
 }
 
@@ -88,6 +95,7 @@ impl Display for WoodpeckerError {
             WoodpeckerError::GrpcError(desc) => write!(f, "Grpc error: {}", desc),
             WoodpeckerError::Internal(desc) => write!(f, "Internal error: {}", desc),
             WoodpeckerError::IoError(ref desc) => write!(f, "IO error: {}", desc),
+            WoodpeckerError::JsonError(ref desc) => write!(f, "Json error: {}", desc),
             WoodpeckerError::NotImplemented(ref desc) => write!(f, "Not implemented: {}", desc),
             WoodpeckerError::RusotoError(ref desc) => write!(f, "Rusoto error: {}", desc),
             WoodpeckerError::TokioError(desc) => write!(f, "Tokio join error: {}", desc),
