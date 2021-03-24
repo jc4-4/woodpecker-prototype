@@ -13,15 +13,15 @@ use rusoto_s3::{
 #[async_trait]
 pub trait BlobStore {
     /// Create a bucket with the name, which must be unique.
-    async fn create_bucket(&self, name: String) -> Result<()>;
+    async fn create_bucket(&self, name: &str) -> Result<()>;
     /// Delete a bucket by name.
-    async fn delete_bucket(&self, name: String) -> Result<()>;
+    async fn delete_bucket(&self, name: &str) -> Result<()>;
     /// Store an object under a bucket with key and body.
-    async fn put_object(&self, bucket: String, key: String, body: StreamingBody) -> Result<()>;
+    async fn put_object(&self, bucket: &str, key: &str, body: StreamingBody) -> Result<()>;
     /// Get an object from a bucket with key.
-    async fn get_object(&self, bucket: String, key: String) -> Result<Bytes>;
+    async fn get_object(&self, bucket: &str, key: &str) -> Result<Bytes>;
     /// Delete an object from a bucket with key.
-    async fn delete_object(&self, bucket: String, key: String) -> Result<()>;
+    async fn delete_object(&self, bucket: &str, key: &str) -> Result<()>;
 }
 
 /// A BlobStore based on AWS S3.
@@ -40,9 +40,9 @@ impl S3BlobStore {
 
 #[async_trait]
 impl BlobStore for S3BlobStore {
-    async fn create_bucket(&self, name: String) -> Result<()> {
+    async fn create_bucket(&self, name: &str) -> Result<()> {
         let req = CreateBucketRequest {
-            bucket: name.clone(),
+            bucket: name.to_string(),
             ..Default::default()
         };
         self.s3_client.create_bucket(req).await?;
@@ -50,9 +50,9 @@ impl BlobStore for S3BlobStore {
         Ok(())
     }
 
-    async fn delete_bucket(&self, name: String) -> Result<()> {
+    async fn delete_bucket(&self, name: &str) -> Result<()> {
         let req = DeleteBucketRequest {
-            bucket: name.clone(),
+            bucket: name.to_string(),
             ..Default::default()
         };
         self.s3_client.delete_bucket(req).await?;
@@ -60,10 +60,10 @@ impl BlobStore for S3BlobStore {
         Ok(())
     }
 
-    async fn put_object(&self, bucket: String, key: String, body: StreamingBody) -> Result<()> {
+    async fn put_object(&self, bucket: &str, key: &str, body: StreamingBody) -> Result<()> {
         let req = PutObjectRequest {
-            bucket: bucket.clone(),
-            key: key.clone(),
+            bucket: bucket.to_string(),
+            key: key.to_string(),
             body: Some(body),
             ..Default::default()
         };
@@ -72,10 +72,10 @@ impl BlobStore for S3BlobStore {
         Ok(())
     }
 
-    async fn get_object(&self, bucket: String, key: String) -> Result<Bytes> {
+    async fn get_object(&self, bucket: &str, key: &str) -> Result<Bytes> {
         let req = GetObjectRequest {
-            bucket: bucket.clone(),
-            key: key.clone(),
+            bucket: bucket.to_string(),
+            key: key.to_string(),
             ..Default::default()
         };
         debug!("Get object under bucket {} with key {}", bucket, key);
@@ -89,10 +89,10 @@ impl BlobStore for S3BlobStore {
         Ok(y.freeze())
     }
 
-    async fn delete_object(&self, bucket: String, key: String) -> Result<()> {
+    async fn delete_object(&self, bucket: &str, key: &str) -> Result<()> {
         let req = DeleteObjectRequest {
-            bucket: bucket.clone(),
-            key: key.clone(),
+            bucket: bucket.to_string(),
+            key: key.to_string(),
             ..Default::default()
         };
         self.s3_client.delete_object(req).await?;
@@ -121,27 +121,23 @@ mod tests {
         });
 
         let bucket_name = "bucket-name".to_string();
-        blob_store.create_bucket(bucket_name.clone()).await?;
+        blob_store.create_bucket(&bucket_name).await?;
 
         let object_name = "object-name".to_string();
         let object_body = b"object-body\n";
         blob_store
             .put_object(
-                bucket_name.clone(),
-                object_name.clone(),
+                &bucket_name,
+                &object_name,
                 StreamingBody::from(object_body.to_vec()),
             )
             .await?;
 
-        let body = blob_store
-            .get_object(bucket_name.clone(), object_name.clone())
-            .await?;
+        let body = blob_store.get_object(&bucket_name, &object_name).await?;
         assert_eq!(&body[..], object_body);
 
-        blob_store
-            .delete_object(bucket_name.clone(), object_name.clone())
-            .await?;
-        blob_store.delete_bucket(bucket_name.clone()).await?;
+        blob_store.delete_object(&bucket_name, &object_name).await?;
+        blob_store.delete_bucket(&bucket_name).await?;
         Ok(())
     }
 }

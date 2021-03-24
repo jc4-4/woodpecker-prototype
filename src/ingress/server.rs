@@ -70,10 +70,7 @@ impl IngressService {
     /// Work on a single task - download, parser, write, and upload.
     async fn work(&self, task: IngressTask) -> Result<String> {
         debug!("Working on task: {:?}", &task);
-        let blob = self
-            .blob_store
-            .get_object(task.bucket.clone(), task.key.clone())
-            .await?;
+        let blob = self.blob_store.get_object(&task.bucket, &task.key).await?;
         // TODO: extract schema from message instead of hardcode
         let schema = self
             .schema_repository
@@ -84,14 +81,12 @@ impl IngressService {
         let writer = Writer::new(schema.arrow_schema.clone());
         let file = writer.write(batch);
         self.blob_store
-            .put_object(
-                self.bucket.clone(),
-                file.name.clone(),
-                StreamingBody::from(file.content),
-            )
+            .put_object(&self.bucket, &file.name, StreamingBody::from(file.content))
             .await?;
         // TODO: extract bucket from message
-        self.blob_store.delete_object(task.bucket, task.key).await?;
+        self.blob_store
+            .delete_object(&task.bucket, &task.key)
+            .await?;
         Ok(file.name)
     }
 }
@@ -135,10 +130,7 @@ mod tests {
     async fn roundtrip() -> Result<()> {
         init();
         let mut service = IngressService::default();
-        service
-            .blob_store
-            .create_bucket(service.bucket.clone())
-            .await?;
+        service.blob_store.create_bucket(&service.bucket).await?;
         service.pub_sub.create_queue("default_queue_name").await?;
         let key_repository = PresignedUrlRepository::default();
         let keys = key_repository.produce(1).await;
@@ -148,7 +140,10 @@ mod tests {
 
         let url = PresignedUrl::new(&url);
         let task: IngressTask = url.into();
-        let blob = service.blob_store.get_object(task.bucket, task.key).await?;
+        let blob = service
+            .blob_store
+            .get_object(&task.bucket, &task.key)
+            .await?;
         debug!("Blob: {:?}", blob.to_vec());
         key_repository.consume(keys).await?;
 
@@ -172,7 +167,7 @@ mod tests {
 
         let bytes = service
             .blob_store
-            .get_object(service.bucket.clone(), files[0].to_string().clone())
+            .get_object(&service.bucket, &files[0])
             .await?;
         let cursor = SliceableCursor::new(bytes.to_vec());
         let reader = SerializedFileReader::new(cursor).unwrap();
@@ -189,12 +184,9 @@ mod tests {
         service.pub_sub.delete_queue(&service.queue_url).await?;
         service
             .blob_store
-            .delete_object(service.bucket.clone(), files[0].to_string().clone())
+            .delete_object(&service.bucket, &files[0])
             .await?;
-        service
-            .blob_store
-            .delete_bucket(service.bucket.clone())
-            .await?;
+        service.blob_store.delete_bucket(&service.bucket).await?;
         Ok(())
     }
 }
