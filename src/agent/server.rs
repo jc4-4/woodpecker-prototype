@@ -1,4 +1,4 @@
-use crate::agent::presigned_url_repository::{PresignedUrl, PresignedUrlRepository};
+use crate::agent::presigned_url::{PresignedUrl, PresignedUrlRepository};
 use crate::agent::protobuf::{
     agent_service_server::{AgentService, AgentServiceServer},
     CreateKeysRequest, CreateKeysResponse, DeleteKeysRequest, DeleteKeysResponse,

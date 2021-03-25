@@ -94,7 +94,7 @@ impl IngressService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent::presigned_url_repository::{PresignedUrl, PresignedUrlRepository};
+    use crate::agent::presigned_url::{PresignedUrl, PresignedUrlRepository};
     use crate::ingress::schema::Schema;
 
     use log::debug;

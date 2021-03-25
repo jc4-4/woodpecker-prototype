@@ -51,10 +51,8 @@ impl Tailer<'_> {
 mod tests {
     use crate::agent::tailer::Tailer;
     use log::debug;
-
     use std::fs::{rename, File};
     use std::io::Write;
-
     use std::str::from_utf8;
     use tempfile::NamedTempFile;
 
