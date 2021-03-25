@@ -83,7 +83,6 @@ impl IngressService {
         self.blob_store
             .put_object(&self.bucket, &file.name, StreamingBody::from(file.content))
             .await?;
-        // TODO: extract bucket from message
         self.blob_store
             .delete_object(&task.bucket, &task.key)
             .await?;
