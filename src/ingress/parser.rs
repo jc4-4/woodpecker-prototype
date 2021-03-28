@@ -27,6 +27,7 @@ impl Parser {
         self.parse_lines(lines)
     }
 
+    // TODO: refactor to return Result<RecordBatch>
     fn parse_lines(&self, lines: Vec<&str>) -> RecordBatch {
         // Create builders for each column
         let fields = self.schema.fields();

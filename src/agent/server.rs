@@ -23,6 +23,7 @@ impl AgentService for WoodpeckerAgentService {
         Ok(Response::new(GetAgentConfigResponse {}))
     }
 
+    // TODO: rename from keys to presign urls. Q: should api use plural or singular?
     async fn create_keys(
         &self,
         _request: Request<CreateKeysRequest>,
