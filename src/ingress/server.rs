@@ -94,13 +94,12 @@ impl IngressService {
 mod tests {
     use super::*;
     use crate::agent::presigned_url::{PresignedUrl, PresignedUrlRepository};
+    use crate::agent::uploader::Uploader;
     use crate::ingress::schema::Schema;
-
+    use crate::serde::ingress_task::IngressTask;
     use log::debug;
     use parquet::arrow::{ArrowReader, ParquetFileArrowReader};
     use parquet::file::serialized_reader::{SerializedFileReader, SliceableCursor};
-
-    use crate::serde::ingress_task::IngressTask;
     use serial_test::serial;
     use std::sync::Arc;
 
@@ -110,18 +109,6 @@ mod tests {
 
     fn init() {
         let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    async fn upload_presigned(presigned_url: &str, bytes: Vec<u8>) -> Result<()> {
-        let client = reqwest::Client::new();
-        let _res = client
-            .put(presigned_url)
-            .body(bytes)
-            .send()
-            .await
-            .expect("Put object with presigned url failed");
-        debug!("Object uploaded to {}", presigned_url);
-        Ok(())
     }
 
     #[tokio::test]
@@ -135,7 +122,8 @@ mod tests {
         let keys = key_repository.produce(1).await;
         let bytes = b"f=oo".to_vec();
         let url = keys[0].to_string();
-        upload_presigned(&url, bytes).await?;
+        let uploader = Uploader::default();
+        uploader.upload(&url, bytes).await?;
 
         let url = PresignedUrl::new(&url);
         let task: IngressTask = url.into();
