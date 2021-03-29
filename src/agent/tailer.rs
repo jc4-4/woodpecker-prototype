@@ -8,18 +8,17 @@ use std::path::Path;
 /// Return a buffer of log events aligned by regex.
 /// Detect and chase to new file upon end-of-file.
 // See the kinesis agent for checkpoints etc. https://github.com/awslabs/amazon-kinesis-agent
-pub struct Tailer<'a> {
-    path: &'a Path,
+pub struct Tailer {
+    path: String,
     file: File,
     buffer: Vec<u8>,
 }
 
-impl Tailer<'_> {
+impl Tailer {
     pub fn try_new(path: &str, buffer_size: usize) -> Result<Tailer> {
-        let path = Path::new(path);
-        let file = File::open(path)?;
+        let file = File::open(Path::new(path))?;
         Ok(Tailer {
-            path,
+            path: path.to_string(),
             file,
             buffer: vec![0; buffer_size],
         })
@@ -36,13 +35,13 @@ impl Tailer<'_> {
 
     pub fn rotate(&mut self) -> Result<()> {
         // TODO check is_rotated
-        self.file = File::open(self.path)?;
+        self.file = File::open(Path::new(self.path.as_str()))?;
         Ok(())
     }
 
     pub fn is_rotated(&self) -> Result<bool> {
         let file_handle = Handle::from_file(self.file.try_clone()?)?;
-        let path_handle = Handle::from_path(self.path)?;
+        let path_handle = Handle::from_path(Path::new(self.path.as_str()))?;
         Ok(file_handle != path_handle)
     }
 }
