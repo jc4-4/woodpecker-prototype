@@ -92,6 +92,7 @@ mod tests {
         create_default_bucket, create_default_queue, delete_default_bucket, delete_default_queue,
         list_default_bucket,
     };
+    use log::debug;
     use serial_test::serial;
     use std::io::Write;
     use tempfile::NamedTempFile;
@@ -125,6 +126,7 @@ mod tests {
         let mut agent = Agent::try_new(config).await?;
         agent.work().await?;
         let keys = list_default_bucket().await?;
+        debug!("Keys under default bucket: {:?}", keys);
         assert_eq!(1, keys.len());
 
         delete_default_bucket().await;
