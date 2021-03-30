@@ -2,6 +2,7 @@ pub mod protobuf {
     include!(concat!(env!("OUT_DIR"), "/woodpecker.protobuf.rs"));
 }
 
+pub mod agent;
 pub mod client;
 pub mod presigned_url;
 pub mod server;

@@ -50,7 +50,7 @@ impl AgentService for WoodpeckerAgentService {
 }
 
 // Refactor this out of main to avoid nested tokio runtime when running test.
-async fn run_server() -> Result<()> {
+pub async fn run_server() -> Result<()> {
     let addr = "[::1]:50051".parse().unwrap();
     let service = WoodpeckerAgentService::default();
     println!("Server listening on {}", addr);

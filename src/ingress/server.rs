@@ -120,7 +120,7 @@ mod tests {
         service.pub_sub.create_queue("default_queue_name").await?;
         let key_repository = PresignedUrlRepository::default();
         let keys = key_repository.produce(1).await;
-        let bytes = b"f=oo".to_vec();
+        let bytes = b"f=oo";
         let url = keys[0].to_string();
         let uploader = Uploader::default();
         uploader.upload(&url, bytes).await?;

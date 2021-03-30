@@ -9,12 +9,12 @@ pub struct Uploader {
 }
 
 impl Uploader {
-    pub async fn upload(&self, presigned_url: &str, bytes: Vec<u8>) -> Result<()> {
+    pub async fn upload(&self, presigned_url: &str, bytes: &[u8]) -> Result<()> {
         let client = reqwest::Client::new();
         // TODO: retry strategy
         let _res = client
             .put(presigned_url)
-            .body(bytes)
+            .body(bytes.to_vec())
             .send()
             .await
             .expect("Put object with presigned url failed");
@@ -45,7 +45,7 @@ mod tests {
         // Instead of `assert!` in server, rely on absent of upload failure.
         let uploader = Uploader::default();
         uploader
-            .upload("http://127.0.0.1:50051/", b"content".to_vec())
+            .upload("http://127.0.0.1:50051/", b"content")
             .await?;
 
         Ok(())
