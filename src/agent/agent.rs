@@ -88,9 +88,10 @@ impl Agent {
 mod tests {
     use super::*;
     use crate::agent::server;
-    use crate::data::pub_sub::{SqsPubSub, PubSub};
-    use rusoto_core::Region;
-    use rusoto_s3::{S3Client, S3, ListObjectsV2Request, CreateBucketRequest};
+    use crate::resource_util::tests::{
+        create_default_bucket, create_default_queue, delete_default_bucket, delete_default_queue,
+        list_default_bucket,
+    };
     use serial_test::serial;
     use std::io::Write;
     use tempfile::NamedTempFile;
@@ -105,19 +106,9 @@ mod tests {
     #[serial]
     async fn roundtrip() -> Result<()> {
         init();
-        let region = Region::Custom {
-            name: "local".to_string(),
-            endpoint: "http://localhost:4566".to_string(),
-        };
-        let s3_client = S3Client::new(region.clone());
-        s3_client.create_bucket(CreateBucketRequest {
-            bucket: "default-bucket".to_string(),
-            ..Default::default()
-        }).await?;
-        let pub_sub = SqsPubSub::new(region.clone());
-        pub_sub.create_queue("default_queue_name").await?;
-        let task = task::spawn_blocking(|| async { server::run_server().await })
-            .await?;
+        create_default_bucket().await;
+        create_default_queue().await;
+        let task = task::spawn_blocking(|| async { server::run_server().await }).await?;
         let _server = task::spawn(task);
         // Wait for server to start
         sleep(Duration::from_millis(1000)).await;
@@ -133,15 +124,11 @@ mod tests {
         };
         let mut agent = Agent::try_new(config).await?;
         agent.work().await?;
+        let keys = list_default_bucket().await?;
+        assert_eq!(1, keys.len());
 
-        // TODO: make this runs with cargo test
-        let req = ListObjectsV2Request {
-            bucket: "default-bucket".to_string(),
-            ..Default::default()
-        };
-        let res = s3_client.list_objects_v2(req).await?;
-        assert!(Some(1), res.key_count);
-
+        delete_default_bucket().await;
+        delete_default_queue().await;
         Ok(())
     }
 }
