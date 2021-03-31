@@ -20,6 +20,8 @@ pub struct AgentConfig {
 }
 
 /// The agent tails log files and upload them.
+// TODO: use a Consumer<Buffer> for better testability.
+// TODO: add test case around rotation.
 pub struct Agent {
     tailer: Tailer,
     client: AgentServiceClient<Channel>,

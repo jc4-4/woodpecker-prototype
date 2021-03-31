@@ -13,6 +13,7 @@ pub struct Parser {
 }
 
 impl Parser {
+    // TODO: Refactor to try_new for regex errors.
     pub fn new(pattern: &str, schema: SchemaRef) -> Parser {
         Parser {
             schema,
@@ -40,6 +41,8 @@ impl Parser {
         // Write columns to each builder
         for line in lines {
             debug!("Parsing line: {}", line);
+            // TODO: handle when line does not match regex
+            // TODO: add system fields like timestamp and raw
             let caps = self.regex.captures(line).unwrap();
             for i in 0..cols {
                 match caps.name(fields[i].name()) {

@@ -18,6 +18,7 @@ impl Writer {
         Writer { schema }
     }
 
+    // TODO: refactor to return Result<File>
     pub fn write(&self, record_batch: RecordBatch) -> File {
         let cursor = InMemoryWriteableCursor::default();
         let mut writer = ArrowWriter::try_new(cursor.clone(), self.schema.clone(), None).unwrap();
