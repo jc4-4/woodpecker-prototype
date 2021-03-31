@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod tests {
+    use crate::agent;
     use crate::agent::client::agent::{Agent, AgentConfig};
-    use crate::agent::server::server;
     use crate::error::Result;
+    use crate::ingress;
     use crate::resource_util::tests::{
         create_default_bucket, create_default_queue, delete_default_bucket, delete_default_queue,
         list_default_bucket,
@@ -18,18 +19,34 @@ mod tests {
         let _ = env_logger::builder().is_test(true).try_init();
     }
 
+    async fn start_agent_server() -> Result<()> {
+        let task =
+            task::spawn_blocking(|| async { agent::server::server::run_server().await }).await?;
+        let _server = task::spawn(task);
+        // Wait for server to start
+        sleep(Duration::from_millis(1000)).await;
+        Ok(())
+    }
+
+    async fn start_ingress_server() -> Result<()> {
+        let task = task::spawn_blocking(|| async { ingress::server::run_server().await }).await?;
+        let _server = task::spawn(task);
+        // Wait for server to start
+        sleep(Duration::from_millis(1000)).await;
+        Ok(())
+    }
+
     #[tokio::test]
     #[serial]
     async fn roundtrip() -> Result<()> {
         init();
         create_default_bucket().await;
         create_default_queue().await;
-        let task = task::spawn_blocking(|| async { server::run_server().await }).await?;
-        let _server = task::spawn(task);
-        // Wait for server to start
-        sleep(Duration::from_millis(1000)).await;
 
-        let content = b"Mary had a little lamb\nLittle lamb, little lamb";
+        start_agent_server().await?;
+        start_ingress_server().await?;
+
+        let content = b"f=oo";
         let mut temp_file = NamedTempFile::new()?;
         temp_file.write(content)?;
 
@@ -40,9 +57,13 @@ mod tests {
         };
         let mut agent = Agent::try_new(config).await?;
         agent.work().await?;
+
+        // Wait for ingress
+        sleep(Duration::from_millis(1000)).await;
         let keys = list_default_bucket().await?;
         debug!("Keys under default bucket: {:?}", keys);
         assert_eq!(1, keys.len());
+        assert!(keys[0].to_string().starts_with("parquet-"));
 
         delete_default_bucket().await;
         delete_default_queue().await;

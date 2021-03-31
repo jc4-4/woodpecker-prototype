@@ -1,6 +1,10 @@
 use crate::error::{woodpecker_error, Result};
 use std::collections::HashMap;
+use std::sync::Arc;
 
+type ArrowDataType = arrow::datatypes::DataType;
+type ArrowField = arrow::datatypes::Field;
+type ArrowSchema = arrow::datatypes::Schema;
 type ArrowSchemaRef = arrow::datatypes::SchemaRef;
 
 /// A schema consist of a regex and an arrow schema.
@@ -29,9 +33,21 @@ pub struct SchemaRepository {
 impl SchemaRepository {
     #[allow(clippy::new_without_default)]
     pub fn new() -> SchemaRepository {
-        SchemaRepository {
-            repository: HashMap::new(),
-        }
+        let mut repository = HashMap::new();
+
+        // Populate default schema for test
+        // TODO: move this to a better place.
+        let schema = Schema::new(
+            "f=(?P<f>\\w+)",
+            Arc::new(ArrowSchema::new(vec![ArrowField::new(
+                "f",
+                ArrowDataType::Utf8,
+                false,
+            )])),
+        );
+        repository.insert("RUST_SINGLE_LINE".to_string(), schema);
+
+        SchemaRepository { repository }
     }
 
     pub async fn put_schema(&mut self, key: &str, schema: Schema) -> Result<()> {

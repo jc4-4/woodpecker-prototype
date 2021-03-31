@@ -5,7 +5,7 @@ use crate::agent::protobuf::{
 };
 use crate::agent::server::presigned_url::{PresignedUrl, PresignedUrlRepository};
 use crate::error::Result;
-use log::debug;
+use log::{debug, info};
 use std::sync::Arc;
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -53,7 +53,7 @@ impl AgentService for WoodpeckerAgentService {
 pub async fn run_server() -> Result<()> {
     let addr = "[::1]:50051".parse().unwrap();
     let service = WoodpeckerAgentService::default();
-    println!("Server listening on {}", addr);
+    info!("Server listening on {}", addr);
     Server::builder()
         .add_service(AgentServiceServer::new(service))
         .serve(addr)
