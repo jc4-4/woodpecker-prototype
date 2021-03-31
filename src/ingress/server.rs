@@ -4,11 +4,12 @@ use crate::error::Result;
 use crate::ingress::parser::Parser;
 use crate::ingress::schema::SchemaRepository;
 use crate::ingress::writer::Writer;
-use log::debug;
+use log::{debug, info};
 use rusoto_core::Region;
 
 use crate::serde::ingress_task::IngressTask;
 use rusoto_s3::StreamingBody;
+use tokio::time::{sleep, Duration};
 
 /// Receive message from a queue for files to parse.
 /// Then write the parsed files to the bucket.
@@ -88,6 +89,23 @@ impl IngressService {
             .await?;
         Ok(file.name)
     }
+}
+
+// Refactor this out of main to avoid nested tokio runtime when running test.
+pub async fn run_server() -> Result<()> {
+    let service = IngressService::default();
+    loop {
+        let tasks = service.process_tasks().await?;
+        info!("Ingested files: {:?}", tasks);
+        sleep(Duration::from_millis(100)).await;
+    }
+}
+
+#[tokio::main]
+pub async fn main() -> Result<()> {
+    env_logger::init();
+    run_server().await?;
+    Ok(())
 }
 
 #[cfg(test)]
