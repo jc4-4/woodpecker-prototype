@@ -4,3 +4,4 @@ pub mod protobuf {
 
 pub mod client;
 pub mod server;
+mod integration_test;
