@@ -28,8 +28,7 @@ pub struct Agent {
 
 impl Agent {
     pub async fn try_new(config: AgentConfig) -> Result<Agent> {
-        // TODO: do it in a way that does not use static scope and leak memory.
-        let tailer = Tailer::try_new(Box::leak(config.file.into_boxed_str()), config.buffer_size)?;
+        let tailer = Tailer::try_new(&config.file, config.buffer_size)?;
 
         // TODO: service discovery
         let client = AgentServiceClient::connect("http://[::1]:50051").await?;
