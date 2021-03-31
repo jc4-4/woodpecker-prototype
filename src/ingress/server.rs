@@ -93,8 +93,8 @@ impl IngressService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent::presigned_url::{PresignedUrl, PresignedUrlRepository};
-    use crate::agent::uploader::Uploader;
+    use crate::agent::client::uploader::Uploader;
+    use crate::agent::server::presigned_url::{PresignedUrl, PresignedUrlRepository};
     use crate::ingress::schema::Schema;
     use crate::serde::ingress_task::IngressTask;
     use log::debug;

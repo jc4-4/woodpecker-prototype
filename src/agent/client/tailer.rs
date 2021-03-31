@@ -48,7 +48,7 @@ impl Tailer {
 
 #[cfg(test)]
 mod tests {
-    use crate::agent::tailer::Tailer;
+    use crate::agent::client::tailer::Tailer;
     use log::debug;
     use std::fs::{rename, File};
     use std::io::Write;

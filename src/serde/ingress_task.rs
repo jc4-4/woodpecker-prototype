@@ -1,4 +1,4 @@
-use crate::agent::presigned_url::PresignedUrl;
+use crate::agent::server::presigned_url::PresignedUrl;
 use log::debug;
 use serde::{Deserialize, Serialize};
 

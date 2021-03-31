@@ -1,9 +1,9 @@
+use crate::agent::client::tailer::Tailer;
+use crate::agent::client::uploader::Uploader;
 use crate::agent::protobuf::{
     agent_service_client::AgentServiceClient, CreateKeysRequest, CreateKeysResponse,
     DeleteKeysRequest, DeleteKeysResponse,
 };
-use crate::agent::tailer::Tailer;
-use crate::agent::uploader::Uploader;
 use crate::error::Result;
 use log::debug;
 use tonic::transport::Channel;
@@ -87,7 +87,7 @@ impl Agent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent::server;
+    use crate::agent::server::server;
     use crate::resource_util::tests::{
         create_default_bucket, create_default_queue, delete_default_bucket, delete_default_queue,
         list_default_bucket,

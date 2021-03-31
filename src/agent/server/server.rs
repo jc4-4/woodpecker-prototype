@@ -1,9 +1,9 @@
-use crate::agent::presigned_url::{PresignedUrl, PresignedUrlRepository};
 use crate::agent::protobuf::{
     agent_service_server::{AgentService, AgentServiceServer},
     CreateKeysRequest, CreateKeysResponse, DeleteKeysRequest, DeleteKeysResponse,
     GetAgentConfigRequest, GetAgentConfigResponse,
 };
+use crate::agent::server::presigned_url::{PresignedUrl, PresignedUrlRepository};
 use crate::error::Result;
 use log::debug;
 use std::sync::Arc;
@@ -69,19 +69,19 @@ pub async fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::agent::protobuf::{
-        agent_service_client::AgentServiceClient, CreateKeysRequest, CreateKeysResponse,
-        DeleteKeysRequest, DeleteKeysResponse,
-    };
-    use crate::data::pub_sub::{PubSub, SqsPubSub};
-    use crate::error::Result;
-
     use rusoto_core::Region;
     use serial_test::serial;
     use tokio::task;
     use tokio::time::{sleep, Duration};
     use tonic::transport::Channel;
     use tonic::Response;
+
+    use crate::agent::protobuf::{
+        agent_service_client::AgentServiceClient, CreateKeysRequest, CreateKeysResponse,
+        DeleteKeysRequest, DeleteKeysResponse,
+    };
+    use crate::data::pub_sub::{PubSub, SqsPubSub};
+    use crate::error::Result;
 
     fn init() {
         let _ = env_logger::builder().is_test(true).try_init();
