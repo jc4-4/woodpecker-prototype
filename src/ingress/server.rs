@@ -113,17 +113,12 @@ mod tests {
     use super::*;
     use crate::agent::client::uploader::Uploader;
     use crate::agent::server::presigned_url::{PresignedUrl, PresignedUrlRepository};
-    use crate::ingress::schema::Schema;
     use crate::serde::ingress_task::IngressTask;
     use log::debug;
     use parquet::arrow::{ArrowReader, ParquetFileArrowReader};
     use parquet::file::serialized_reader::{SerializedFileReader, SliceableCursor};
     use serial_test::serial;
     use std::sync::Arc;
-
-    type ArrowDataType = arrow::datatypes::DataType;
-    type ArrowField = arrow::datatypes::Field;
-    type ArrowSchema = arrow::datatypes::Schema;
 
     fn init() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -133,7 +128,7 @@ mod tests {
     #[serial]
     async fn roundtrip() -> Result<()> {
         init();
-        let mut service = IngressService::default();
+        let service = IngressService::default();
         service.blob_store.create_bucket(&service.bucket).await?;
         service.pub_sub.create_queue("default_queue_name").await?;
         let key_repository = PresignedUrlRepository::default();
@@ -151,21 +146,6 @@ mod tests {
             .await?;
         debug!("Blob: {:?}", blob.to_vec());
         key_repository.consume(keys).await?;
-
-        // create schema
-        let schema = Schema::new(
-            "f=(?P<f>\\w+)",
-            Arc::new(ArrowSchema::new(vec![ArrowField::new(
-                "f",
-                ArrowDataType::Utf8,
-                false,
-            )])),
-        );
-
-        service
-            .schema_repository
-            .put_schema("RUST_SINGLE_LINE", schema)
-            .await?;
 
         let files = service.process_tasks().await?;
         assert_eq!(1, files.len());
