@@ -4,11 +4,7 @@ use rusoto_core::Region;
 use rusoto_dynamodb::{AttributeValue, DynamoDb, DynamoDbClient, GetItemInput, PutItemInput};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
 
-type ArrowDataType = arrow::datatypes::DataType;
-type ArrowField = arrow::datatypes::Field;
-type ArrowSchema = arrow::datatypes::Schema;
 type ArrowSchemaRef = arrow::datatypes::SchemaRef;
 
 /// A schema consist of a regex and an arrow schema.
@@ -75,19 +71,6 @@ impl SchemaRepository {
     }
 
     pub async fn get_schema(&self, key: &str) -> Result<Schema> {
-        // TODO: refactor this out
-        if key == "RUST_SINGLE_LINE" {
-            let schema = Schema::new(
-                "f=(?P<f>\\w+)",
-                Arc::new(ArrowSchema::new(vec![ArrowField::new(
-                    "f",
-                    ArrowDataType::Utf8,
-                    false,
-                )])),
-            );
-            return Ok(schema);
-        }
-
         let mut item = HashMap::new();
         item.insert(
             KEY.to_string(),

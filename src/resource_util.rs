@@ -3,6 +3,7 @@ pub(crate) mod tests {
     use crate::data::blob_store::{BlobStore, S3BlobStore};
     use crate::data::pub_sub::{PubSub, SqsPubSub};
     use crate::error::Result;
+    use crate::ingress::schema::{Schema, SchemaRepository};
     use log::debug;
     use rusoto_core::Region;
     use rusoto_dynamodb::{
@@ -10,6 +11,12 @@ pub(crate) mod tests {
         KeySchemaElement, ProvisionedThroughput,
     };
     use rusoto_s3::{ListObjectsV2Request, S3Client, S3};
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    type ArrowDataType = arrow::datatypes::DataType;
+    type ArrowField = arrow::datatypes::Field;
+    type ArrowSchema = arrow::datatypes::Schema;
 
     pub async fn create_default_bucket() {
         let blob_store = S3BlobStore::new(local_region());
@@ -90,6 +97,26 @@ pub(crate) mod tests {
         };
         debug!("DeleteTableInput: {:#?}", req);
         client.delete_table(req).await.unwrap();
+    }
+
+    pub async fn populate_test_schemas() {
+        let repository = SchemaRepository::new("default-table", local_region());
+        // TODO: remove metadata
+        let mut md = HashMap::new();
+        md.insert("x".to_string(), "y".to_string());
+        repository
+            .put_schema(
+                "RUST_SINGLE_LINE",
+                Schema::new(
+                    "f=(?P<f>\\w+)",
+                    Arc::new(ArrowSchema::new_with_metadata(
+                        vec![ArrowField::new("f", ArrowDataType::Utf8, false)],
+                        md,
+                    )),
+                ),
+            )
+            .await
+            .unwrap();
     }
 
     fn local_region() -> Region {

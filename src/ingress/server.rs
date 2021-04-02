@@ -114,6 +114,10 @@ mod tests {
     use super::*;
     use crate::agent::client::uploader::Uploader;
     use crate::agent::server::presigned_url::{PresignedUrl, PresignedUrlRepository};
+    use crate::resource_util::tests::{
+        create_default_bucket, create_default_queue, create_default_table, delete_default_bucket,
+        delete_default_queue, populate_test_schemas,
+    };
     use crate::serde::ingress_task::IngressTask;
     use log::debug;
     use parquet::arrow::{ArrowReader, ParquetFileArrowReader};
@@ -129,9 +133,12 @@ mod tests {
     #[serial]
     async fn roundtrip() -> Result<()> {
         init();
+        create_default_queue().await;
+        create_default_bucket().await;
+        create_default_table().await;
+        populate_test_schemas().await;
+
         let service = IngressService::default();
-        service.blob_store.create_bucket(&service.bucket).await?;
-        service.pub_sub.create_queue("default_queue_name").await?;
         let key_repository = PresignedUrlRepository::default();
         let keys = key_repository.produce(1).await;
         let bytes = b"f=oo";
@@ -167,12 +174,8 @@ mod tests {
         assert_eq!(1, actual_batch.num_rows());
         debug!("Actual_batch: {:#?}", actual_batch);
 
-        service.pub_sub.delete_queue(&service.queue_url).await?;
-        service
-            .blob_store
-            .delete_object(&service.bucket, &files[0])
-            .await?;
-        service.blob_store.delete_bucket(&service.bucket).await?;
+        delete_default_queue().await;
+        delete_default_bucket().await;
         Ok(())
     }
 }

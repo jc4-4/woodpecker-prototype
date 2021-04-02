@@ -6,7 +6,7 @@ mod tests {
     use crate::ingress;
     use crate::resource_util::tests::{
         create_default_bucket, create_default_queue, delete_default_bucket, delete_default_queue,
-        list_default_bucket,
+        list_default_bucket, populate_test_schemas,
     };
     use log::debug;
     use serial_test::serial;
@@ -42,6 +42,7 @@ mod tests {
         init();
         create_default_bucket().await;
         create_default_queue().await;
+        populate_test_schemas().await;
 
         start_agent_server().await?;
         start_ingress_server().await?;
