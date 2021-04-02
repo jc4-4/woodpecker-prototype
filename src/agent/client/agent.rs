@@ -21,7 +21,7 @@ pub struct AgentConfig {
 }
 
 #[async_trait]
-trait BufferEater {
+trait BufferHandler {
     async fn consume(&mut self, buffer: &[u8]) -> Result<()>;
 }
 
@@ -30,16 +30,16 @@ trait BufferEater {
 // TODO: add test case around rotation.
 pub struct Agent {
     tailer: Tailer,
-    consumer: Box<dyn BufferEater>,
+    handler: Box<dyn BufferHandler>,
 }
 
-struct BufferUploader {
+struct BufferConsumer {
     client: AgentServiceClient<Channel>,
     uploader: Uploader,
 }
 
 #[async_trait]
-impl BufferEater for BufferUploader {
+impl BufferHandler for BufferConsumer {
     async fn consume(&mut self, buffer: &[u8]) -> Result<()> {
         debug!("Buffer received: {:?}", buffer);
         // Note: if I refactor the following snippet to another function,
@@ -70,7 +70,7 @@ impl Agent {
 
         Ok(Agent {
             tailer,
-            consumer: Box::new(BufferUploader {
+            handler: Box::new(BufferConsumer {
                 client,
                 uploader: Uploader::default(),
             }),
@@ -88,7 +88,7 @@ impl Agent {
     pub async fn work(&mut self) -> Result<()> {
         match self.tailer.read()? {
             Some(buffer) => {
-                self.consumer.consume(buffer).await?;
+                self.handler.consume(buffer).await?;
                 Ok(())
             }
             None => {
@@ -105,7 +105,7 @@ impl Agent {
 
 #[cfg(test)]
 mod tests {
-    use crate::agent::client::agent::{Agent, BufferEater};
+    use crate::agent::client::agent::{Agent, BufferHandler};
     use crate::agent::client::tailer::Tailer;
     use crate::error::Result;
     use async_trait::async_trait;
@@ -119,7 +119,7 @@ mod tests {
     }
 
     #[async_trait]
-    impl BufferEater for BufferCollector {
+    impl BufferHandler for BufferCollector {
         async fn consume(&mut self, buffer: &[u8]) -> Result<()> {
             let mut buf = self.buffer.lock().unwrap();
             buf.extend_from_slice(buffer);
@@ -144,7 +144,7 @@ mod tests {
         let buf = Arc::new(Mutex::new(vec![]));
         let mut agent = Agent {
             tailer,
-            consumer: Box::new(BufferCollector {
+            handler: Box::new(BufferCollector {
                 buffer: buf.clone(),
             }),
         };
