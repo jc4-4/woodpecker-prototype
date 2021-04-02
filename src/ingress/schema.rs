@@ -1,4 +1,8 @@
 use crate::error::{woodpecker_error, Result};
+use log::debug;
+use rusoto_core::Region;
+use rusoto_dynamodb::{AttributeValue, DynamoDb, DynamoDbClient, GetItemInput, PutItemInput};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -8,7 +12,7 @@ type ArrowSchema = arrow::datatypes::Schema;
 type ArrowSchemaRef = arrow::datatypes::SchemaRef;
 
 /// A schema consist of a regex and an arrow schema.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Schema {
     /// A regex tells us how to parse the input.
     pub regex: String,
@@ -25,43 +29,85 @@ impl Schema {
     }
 }
 
+static KEY: &str = "key";
+
 pub struct SchemaRepository {
-    // TODO: use a dynamo db client.
-    repository: HashMap<String, Schema>,
+    table_name: String,
+    client: DynamoDbClient,
+}
+
+impl Default for SchemaRepository {
+    fn default() -> Self {
+        let region = Region::Custom {
+            name: "local".to_string(),
+            endpoint: "http://localhost:4566".to_string(),
+        };
+        SchemaRepository::new("default-table", region)
+    }
 }
 
 impl SchemaRepository {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> SchemaRepository {
-        let mut repository = HashMap::new();
-
-        // Populate default schema for test
-        // TODO: move this to a better place.
-        let schema = Schema::new(
-            "f=(?P<f>\\w+)",
-            Arc::new(ArrowSchema::new(vec![ArrowField::new(
-                "f",
-                ArrowDataType::Utf8,
-                false,
-            )])),
-        );
-        repository.insert("RUST_SINGLE_LINE".to_string(), schema);
-
-        SchemaRepository { repository }
-    }
-
-    pub async fn put_schema(&mut self, key: &str, schema: Schema) -> Result<()> {
-        match self.repository.insert(key.to_string(), schema) {
-            None => Ok(()),
-            Some(_) => Err(woodpecker_error(
-                format!("Schema already exist under key {}", key).as_str(),
-            )),
+    pub fn new(table_name: &str, region: Region) -> SchemaRepository {
+        SchemaRepository {
+            table_name: table_name.to_string(),
+            client: DynamoDbClient::new(region),
         }
     }
 
-    pub async fn get_schema(&self, key: &str) -> Result<&Schema> {
-        match self.repository.get(key) {
-            Some(schema) => Ok(schema),
+    pub async fn put_schema(&self, key: &str, schema: Schema) -> Result<()> {
+        // TODO: conditional put to avoid accidental overwrites.
+        let mut item = serde_dynamodb::to_hashmap(&schema)?;
+        item.insert(
+            KEY.to_string(),
+            AttributeValue {
+                s: Some(key.to_string()),
+                ..Default::default()
+            },
+        );
+        let req = PutItemInput {
+            table_name: self.table_name.clone(),
+            item,
+            ..Default::default()
+        };
+        debug!("PutItemInput: {:#?}", req);
+        self.client.put_item(req).await.expect("Put item failure: ");
+        Ok(())
+    }
+
+    pub async fn get_schema(&self, key: &str) -> Result<Schema> {
+        // TODO: refactor this out
+        if key == "RUST_SINGLE_LINE" {
+            let schema = Schema::new(
+                "f=(?P<f>\\w+)",
+                Arc::new(ArrowSchema::new(vec![ArrowField::new(
+                    "f",
+                    ArrowDataType::Utf8,
+                    false,
+                )])),
+            );
+            return Ok(schema);
+        }
+
+        let mut item = HashMap::new();
+        item.insert(
+            KEY.to_string(),
+            AttributeValue {
+                s: Some(key.to_string()),
+                ..Default::default()
+            },
+        );
+        let req = GetItemInput {
+            table_name: self.table_name.clone(),
+            key: item,
+            ..Default::default()
+        };
+
+        let res = self.client.get_item(req).await.expect("Get item failure: ");
+        match res.item {
+            Some(item) => {
+                let schema = serde_dynamodb::from_hashmap(item)?;
+                Ok(schema)
+            }
             None => Err(woodpecker_error(
                 format!("Schema does not exist with key: {}", key).as_str(),
             )),
@@ -72,36 +118,52 @@ impl SchemaRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    type ArrowSchema = arrow::datatypes::Schema;
+    use crate::resource_util::tests::{create_default_table, delete_default_table};
+    use serial_test::serial;
     use std::sync::Arc;
+
+    type ArrowSchema = arrow::datatypes::Schema;
 
     fn init() {
         let _ = env_logger::builder().is_test(true).try_init();
     }
 
     #[tokio::test]
+    #[serial]
     async fn roundtrip() -> Result<()> {
         init();
+        create_default_table().await;
 
-        let schema = Schema::new("regex", Arc::new(ArrowSchema::new(vec![])));
-        let mut repository = SchemaRepository::new();
+        // TODO: use empty metadata
+        let mut md = HashMap::new();
+        md.insert("x".to_string(), "y".to_string());
+        let schema = Schema::new(
+            "regex",
+            Arc::new(ArrowSchema::new_with_metadata(vec![], md)),
+        );
+        let repository = SchemaRepository::default();
 
         let key = "id";
         repository.put_schema(key, schema.clone()).await?;
-        assert_eq!(schema, *repository.get_schema(key).await?);
+        assert_eq!(schema, repository.get_schema(key).await?);
+        delete_default_table().await;
         Ok(())
     }
 
     #[tokio::test]
+    #[serial]
     async fn does_not_exist() -> Result<()> {
         init();
-        let repository = SchemaRepository::new();
+        create_default_table().await;
+
+        let repository = SchemaRepository::default();
         let res = repository.get_schema("does not exist").await;
         assert!(res
             .err()
             .unwrap()
             .to_string()
             .starts_with("General error: Schema does not exist"));
+        delete_default_table().await;
         Ok(())
     }
 }

@@ -16,9 +16,10 @@ pub enum WoodpeckerError {
     GrpcError(tonic::Status),
     Internal(String),
     IoError(io::Error),
-    JsonError(serde_json::Error),
+    SerdeJsonError(serde_json::Error),
     NotImplemented(String),
     RusotoError(String), // Use String to workaround type parameter in RusotoError.
+    SerdeDdbError(serde_dynamodb::Error),
     TokioError(tokio::task::JoinError),
     TonicError(tonic::transport::Error),
 }
@@ -47,7 +48,7 @@ impl From<ArrowError> for WoodpeckerError {
 
 impl From<serde_json::Error> for WoodpeckerError {
     fn from(e: serde_json::Error) -> Self {
-        WoodpeckerError::JsonError(e)
+        WoodpeckerError::SerdeJsonError(e)
     }
 }
 
@@ -75,6 +76,12 @@ impl<E: Error + 'static> From<rusoto_core::RusotoError<E>> for WoodpeckerError {
     }
 }
 
+impl From<serde_dynamodb::Error> for WoodpeckerError {
+    fn from(e: serde_dynamodb::Error) -> Self {
+        WoodpeckerError::SerdeDdbError(e)
+    }
+}
+
 impl From<tokio::task::JoinError> for WoodpeckerError {
     fn from(e: tokio::task::JoinError) -> Self {
         WoodpeckerError::TokioError(e)
@@ -95,9 +102,10 @@ impl Display for WoodpeckerError {
             WoodpeckerError::GrpcError(desc) => write!(f, "Grpc error: {}", desc),
             WoodpeckerError::Internal(desc) => write!(f, "Internal error: {}", desc),
             WoodpeckerError::IoError(ref desc) => write!(f, "IO error: {}", desc),
-            WoodpeckerError::JsonError(ref desc) => write!(f, "Json error: {}", desc),
             WoodpeckerError::NotImplemented(ref desc) => write!(f, "Not implemented: {}", desc),
             WoodpeckerError::RusotoError(ref desc) => write!(f, "Rusoto error: {}", desc),
+            WoodpeckerError::SerdeDdbError(ref desc) => write!(f, "Serde error: {}", desc),
+            WoodpeckerError::SerdeJsonError(ref desc) => write!(f, "Serde error: {}", desc),
             WoodpeckerError::TokioError(desc) => write!(f, "Tokio join error: {}", desc),
             WoodpeckerError::TonicError(desc) => write!(f, "Tonic error: {}", desc),
         }

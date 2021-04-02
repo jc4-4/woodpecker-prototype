@@ -3,7 +3,12 @@ pub(crate) mod tests {
     use crate::data::blob_store::{BlobStore, S3BlobStore};
     use crate::data::pub_sub::{PubSub, SqsPubSub};
     use crate::error::Result;
+    use log::debug;
     use rusoto_core::Region;
+    use rusoto_dynamodb::{
+        AttributeDefinition, CreateTableInput, DeleteTableInput, DynamoDb, DynamoDbClient,
+        KeySchemaElement, ProvisionedThroughput,
+    };
     use rusoto_s3::{ListObjectsV2Request, S3Client, S3};
 
     pub async fn create_default_bucket() {
@@ -52,6 +57,39 @@ pub(crate) mod tests {
             .delete_queue("http://localhost:4566/000000000000/default_queue_name")
             .await
             .unwrap();
+    }
+
+    pub async fn create_default_table() {
+        let client = DynamoDbClient::new(local_region());
+        let req = CreateTableInput {
+            table_name: "default-table".to_string(),
+            key_schema: vec![KeySchemaElement {
+                attribute_name: "key".to_string(),
+                key_type: "HASH".to_string(),
+            }],
+            attribute_definitions: vec![AttributeDefinition {
+                attribute_name: "key".to_string(),
+                attribute_type: "S".to_string(),
+            }],
+            // billing_mode: Some("PAYPERREQUEST".to_string()),
+            provisioned_throughput: Some(ProvisionedThroughput {
+                read_capacity_units: 10,
+                write_capacity_units: 10,
+            }),
+            ..Default::default()
+        };
+        debug!("CreateTableInput: {:#?}", req);
+        client.create_table(req).await.unwrap();
+    }
+
+    pub async fn delete_default_table() {
+        let client = DynamoDbClient::new(local_region());
+        let req = DeleteTableInput {
+            table_name: "default-table".to_string(),
+            ..Default::default()
+        };
+        debug!("DeleteTableInput: {:#?}", req);
+        client.delete_table(req).await.unwrap();
     }
 
     fn local_region() -> Region {

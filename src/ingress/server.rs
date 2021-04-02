@@ -42,7 +42,8 @@ impl IngressService {
         IngressService {
             bucket,
             queue_url,
-            schema_repository: SchemaRepository::new(),
+            // TODO: fix this
+            schema_repository: SchemaRepository::default(),
             blob_store: S3BlobStore::new(region.clone()),
             pub_sub: SqsPubSub::new(region),
         }

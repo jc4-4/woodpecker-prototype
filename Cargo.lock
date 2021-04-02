@@ -1399,10 +1399,12 @@ dependencies = [
  "reqwest",
  "rusoto_core",
  "rusoto_credential",
+ "rusoto_dynamodb",
  "rusoto_s3",
  "rusoto_sqs",
  "same-file",
  "serde",
+ "serde_dynamodb",
  "serde_json",
  "serial_test",
  "tempfile",
@@ -1659,6 +1661,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "rusoto_dynamodb"
+version = "0.46.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f26af40f36409cb8fae3069690f78f638f747b55c7b90f338d5ed36016b0cda"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "futures",
+ "rusoto_core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "rusoto_s3"
 version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1830,6 +1846,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "serde_dynamodb"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e9faf5eb2ed31361096d8273a89862d506fe6c6178d86cfb181a3b86e533405"
+dependencies = [
+ "bytes",
+ "rusoto_dynamodb",
+ "serde",
 ]
 
 [[package]]
