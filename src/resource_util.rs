@@ -80,7 +80,7 @@ pub(crate) mod tests {
             billing_mode: Some("PAY_PER_REQUEST".to_string()),
             ..Default::default()
         };
-        debug!("CreateTableInput: {:#?}", req);
+        debug!("{:#?}", req);
         client.create_table(req).await.unwrap();
     }
 
@@ -90,7 +90,7 @@ pub(crate) mod tests {
             table_name: "default-table".to_string(),
             ..Default::default()
         };
-        debug!("DeleteTableInput: {:#?}", req);
+        debug!("{:#?}", req);
         client.delete_table(req).await.unwrap();
     }
 

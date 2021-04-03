@@ -66,7 +66,7 @@ impl SchemaRepository {
             item,
             ..Default::default()
         };
-        debug!("PutItemInput: {:#?}", req);
+        debug!("{:#?}", req);
         self.client.put_item(req).await.expect("Put item failure: ");
         Ok(())
     }
