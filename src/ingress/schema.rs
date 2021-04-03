@@ -67,7 +67,7 @@ impl SchemaRepository {
             ..Default::default()
         };
         debug!("{:#?}", req);
-        self.client.put_item(req).await.expect("Put item failure: ");
+        self.client.put_item(req).await.expect("Put item failure");
         Ok(())
     }
 
@@ -86,18 +86,17 @@ impl SchemaRepository {
             ..Default::default()
         };
 
-        let res = self.client.get_item(req).await.expect("Get item failure: ");
+        let res = self.client.get_item(req).await.expect("Get item failure");
         match res.item {
             Some(mut item) => {
                 // Insert metadata if not present. Otherwise, deserialize might fail.
-                if let Some(arrow_schema) = item.get_mut("arrow_schema") {
-                    let map = arrow_schema.m.as_mut().unwrap();
-                    if let Vacant(metadata) = map.entry("metadata".to_string()) {
-                        metadata.insert(AttributeValue {
-                            m: Some(HashMap::new()),
-                            ..Default::default()
-                        });
-                    }
+                let arrow_schema = item.get_mut("arrow_schema").expect("Arrow schema exists");
+                let map = arrow_schema.m.as_mut().expect("Arrow Schema is a map");
+                if let Vacant(metadata) = map.entry("metadata".to_string()) {
+                    metadata.insert(AttributeValue {
+                        m: Some(HashMap::new()),
+                        ..Default::default()
+                    });
                 }
                 let schema = serde_dynamodb::from_hashmap(item)?;
                 Ok(schema)
