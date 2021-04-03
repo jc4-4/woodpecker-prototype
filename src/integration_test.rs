@@ -5,8 +5,8 @@ mod tests {
     use crate::error::Result;
     use crate::ingress;
     use crate::resource_util::tests::{
-        create_default_bucket, create_default_queue, delete_default_bucket, delete_default_queue,
-        list_default_bucket, populate_test_schemas,
+        create_default_bucket, create_default_queue, create_default_table, delete_default_bucket,
+        delete_default_queue, delete_default_table, list_default_bucket, populate_test_schemas,
     };
     use log::debug;
     use serial_test::serial;
@@ -42,6 +42,7 @@ mod tests {
         init();
         create_default_bucket().await;
         create_default_queue().await;
+        create_default_table().await;
         populate_test_schemas().await;
 
         start_agent_server().await?;
@@ -66,6 +67,7 @@ mod tests {
         assert_eq!(1, keys.len());
         assert!(keys[0].to_string().starts_with("parquet-"));
 
+        delete_default_table().await;
         delete_default_bucket().await;
         delete_default_queue().await;
         Ok(())

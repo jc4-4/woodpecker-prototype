@@ -8,7 +8,7 @@ pub(crate) mod tests {
     use rusoto_core::Region;
     use rusoto_dynamodb::{
         AttributeDefinition, CreateTableInput, DeleteTableInput, DynamoDb, DynamoDbClient,
-        KeySchemaElement, ProvisionedThroughput,
+        KeySchemaElement,
     };
     use rusoto_s3::{ListObjectsV2Request, S3Client, S3};
     use std::collections::HashMap;
@@ -78,11 +78,7 @@ pub(crate) mod tests {
                 attribute_name: "key".to_string(),
                 attribute_type: "S".to_string(),
             }],
-            // billing_mode: Some("PAYPERREQUEST".to_string()),
-            provisioned_throughput: Some(ProvisionedThroughput {
-                read_capacity_units: 10,
-                write_capacity_units: 10,
-            }),
+            billing_mode: Some("PAY_PER_REQUEST".to_string()),
             ..Default::default()
         };
         debug!("CreateTableInput: {:#?}", req);

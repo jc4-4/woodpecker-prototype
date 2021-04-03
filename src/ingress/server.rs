@@ -116,7 +116,7 @@ mod tests {
     use crate::agent::server::presigned_url::{PresignedUrl, PresignedUrlRepository};
     use crate::resource_util::tests::{
         create_default_bucket, create_default_queue, create_default_table, delete_default_bucket,
-        delete_default_queue, populate_test_schemas,
+        delete_default_queue, delete_default_table, populate_test_schemas,
     };
     use crate::serde::ingress_task::IngressTask;
     use log::debug;
@@ -174,6 +174,7 @@ mod tests {
         assert_eq!(1, actual_batch.num_rows());
         debug!("Actual_batch: {:#?}", actual_batch);
 
+        delete_default_table().await;
         delete_default_queue().await;
         delete_default_bucket().await;
         Ok(())
