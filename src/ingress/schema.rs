@@ -3,6 +3,7 @@ use log::debug;
 use rusoto_core::Region;
 use rusoto_dynamodb::{AttributeValue, DynamoDb, DynamoDbClient, GetItemInput, PutItemInput};
 use serde::{Deserialize, Serialize};
+use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
 
 type ArrowSchemaRef = arrow::datatypes::SchemaRef;
@@ -87,7 +88,17 @@ impl SchemaRepository {
 
         let res = self.client.get_item(req).await.expect("Get item failure: ");
         match res.item {
-            Some(item) => {
+            Some(mut item) => {
+                // Insert metadata if not present. Otherwise, deserialize might fail.
+                if let Some(arrow_schema) = item.get_mut("arrow_schema") {
+                    let map = arrow_schema.m.as_mut().unwrap();
+                    if let Vacant(metadata) = map.entry("metadata".to_string()) {
+                        metadata.insert(AttributeValue {
+                            m: Some(HashMap::new()),
+                            ..Default::default()
+                        });
+                    }
+                }
                 let schema = serde_dynamodb::from_hashmap(item)?;
                 Ok(schema)
             }
@@ -117,13 +128,7 @@ mod tests {
         init();
         create_default_table().await;
 
-        // TODO: use empty metadata
-        let mut md = HashMap::new();
-        md.insert("x".to_string(), "y".to_string());
-        let schema = Schema::new(
-            "regex",
-            Arc::new(ArrowSchema::new_with_metadata(vec![], md)),
-        );
+        let schema = Schema::new("regex", Arc::new(ArrowSchema::empty()));
         let repository = SchemaRepository::default();
 
         let key = "id";

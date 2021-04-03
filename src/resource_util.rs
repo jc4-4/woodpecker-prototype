@@ -11,7 +11,6 @@ pub(crate) mod tests {
         KeySchemaElement,
     };
     use rusoto_s3::{ListObjectsV2Request, S3Client, S3};
-    use std::collections::HashMap;
     use std::sync::Arc;
 
     type ArrowDataType = arrow::datatypes::DataType;
@@ -97,18 +96,16 @@ pub(crate) mod tests {
 
     pub async fn populate_test_schemas() {
         let repository = SchemaRepository::new("default-table", local_region());
-        // TODO: remove metadata
-        let mut md = HashMap::new();
-        md.insert("x".to_string(), "y".to_string());
         repository
             .put_schema(
                 "RUST_SINGLE_LINE",
                 Schema::new(
                     "f=(?P<f>\\w+)",
-                    Arc::new(ArrowSchema::new_with_metadata(
-                        vec![ArrowField::new("f", ArrowDataType::Utf8, false)],
-                        md,
-                    )),
+                    Arc::new(ArrowSchema::new(vec![ArrowField::new(
+                        "f",
+                        ArrowDataType::Utf8,
+                        false,
+                    )])),
                 ),
             )
             .await
