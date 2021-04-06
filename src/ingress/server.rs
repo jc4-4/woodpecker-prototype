@@ -76,7 +76,7 @@ impl IngressService {
         // TODO: extract schema from message instead of hardcode
         let schema = self
             .schema_repository
-            .get_schema("RUST_SINGLE_LINE")
+            .get_schema("INGRESS_SERVER_HARDCODE")
             .await?;
         let parser = Parser::new(schema.regex.as_str(), schema.arrow_schema.clone());
         let batch = parser.parse(blob);

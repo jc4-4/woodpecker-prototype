@@ -95,21 +95,23 @@ pub(crate) mod tests {
     }
 
     pub async fn populate_test_schemas() {
+        let test_schemas = vec![
+            ("INGRESS_SERVER_HARDCODE",
+             Schema::new(
+                 "f=(?P<f>\\w+)",
+                 Arc::new(ArrowSchema::new(vec![ArrowField::new(
+                     "f",
+                     ArrowDataType::Utf8,
+                     false,
+                 )]))))
+        ];
         let repository = SchemaRepository::new("default-table", local_region());
-        repository
-            .put_schema(
-                "RUST_SINGLE_LINE",
-                Schema::new(
-                    "f=(?P<f>\\w+)",
-                    Arc::new(ArrowSchema::new(vec![ArrowField::new(
-                        "f",
-                        ArrowDataType::Utf8,
-                        false,
-                    )])),
-                ),
-            )
-            .await
-            .unwrap();
+        for (key, schema) in test_schemas {
+            repository
+                .put_schema(key, schema)
+                .await
+                .unwrap();
+        }
     }
 
     fn local_region() -> Region {
