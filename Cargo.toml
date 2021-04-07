@@ -32,6 +32,7 @@ tonic = "0.4"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 
 [dev-dependencies]
+criterion = "0.3"
 serial_test = "0.5"
 tempfile = "3.2"
 tokio-test = "0.4"
@@ -43,3 +44,7 @@ tonic-build = "0.4"
 [[bin]]
 name = "log-gen"
 path = "src/bin/log_gen.rs"
+
+[[bench]]
+name = "simple"
+harness = false
