@@ -39,3 +39,7 @@ warp = "0.3"
 
 [build-dependencies]
 tonic-build = "0.4"
+
+[[bin]]
+name = "log-gen"
+path = "src/bin/log_gen.rs"
