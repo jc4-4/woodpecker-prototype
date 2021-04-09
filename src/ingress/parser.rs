@@ -71,9 +71,10 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::Parser;
+    use crate::error::Result;
     use arrow::array::StringArray;
     use arrow::datatypes::{DataType, Field, Schema};
-
+    use arrow::record_batch::RecordBatch;
     use log::debug;
     use std::sync::Arc;
 
@@ -153,18 +154,45 @@ mod tests {
         assert_eq!(1, record_batch.num_rows());
         debug!("{:#?}", record_batch);
 
-        let col_b = record_batch
-            .column(0)
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .unwrap();
+        let col_b = to_string_array(&record_batch, 0);
         assert_eq!(StringArray::from(vec!["ar"]), *col_b);
 
-        let col_f = record_batch
-            .column(1)
+        let col_f = to_string_array(&record_batch, 1);
+        assert_eq!(StringArray::from(vec!["oo"]), *col_f);
+    }
+
+    fn to_string_array(record_batch: &RecordBatch, col: usize) -> &StringArray {
+        record_batch
+            .column(col)
             .as_any()
             .downcast_ref::<StringArray>()
-            .unwrap();
-        assert_eq!(StringArray::from(vec!["oo"]), *col_f);
+            .unwrap()
+    }
+
+    #[test]
+    fn rust_log() -> Result<()> {
+        init();
+        let line = "[2021-04-07T05:33:41Z DEBUG log_gen]    Its fleece was white as snow,";
+        // RFC3339 regex: https://gist.github.com/marcelotmelo/b67f58a08bee6c2468f8
+        let parser = Parser::new(
+            "\\[(?P<timestamp>([0-9]+)-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])[Tt]([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9]|60)(\\.[0-9]+)?(([Zz])|([\\+|\\-]([01][0-9]|2[0-3]):[0-5][0-9]))) (?P<level>\\w+) (?P<class>\\w+)\\](?P<content>.*)",
+            Arc::from(Schema::new(vec![
+                Field::new("timestamp", DataType::Utf8, false),
+                Field::new("level", DataType::Utf8, false),
+                Field::new("class", DataType::Utf8, false),
+                Field::new("content", DataType::Utf8, false),
+            ])),
+        );
+
+        let record_batch = parser.parse(line.into());
+        assert_eq!(1, record_batch.num_rows());
+        debug!("{:#?}", record_batch);
+
+        assert_eq!(StringArray::from(vec!["2021-04-07T05:33:41Z"]), *to_string_array(&record_batch, 0));
+        assert_eq!(StringArray::from(vec!["DEBUG"]), *to_string_array(&record_batch, 1));
+        assert_eq!(StringArray::from(vec!["log_gen"]), *to_string_array(&record_batch, 2));
+        assert_eq!(StringArray::from(vec!["    Its fleece was white as snow,"]), *to_string_array(&record_batch, 3));
+
+        Ok(())
     }
 }
