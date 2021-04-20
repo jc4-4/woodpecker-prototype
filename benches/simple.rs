@@ -1,11 +1,11 @@
-use arrow::datatypes::{Schema, Field, DataType};
+use arrow::datatypes::{DataType, Field, Schema};
+use bytes::Bytes;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use log::debug;
 use prototype::ingress::parser::Parser;
 use std::fs::File;
 use std::io::Read;
 use std::sync::Arc;
-use bytes::Bytes;
 
 fn read_file(name: &str) -> Bytes {
     let file = File::open(format!("{}{}", "./src/bin/", name)).unwrap();
@@ -34,7 +34,9 @@ fn criterion_benchmark(c: &mut Criterion) {
             Field::new("content", DataType::Utf8, false),
         ])),
     );
-    c.bench_function("mary.log", |b| b.iter(|| parse(black_box(&parser), black_box(bytes.clone()))));
+    c.bench_function("mary.log", |b| {
+        b.iter(|| parse(black_box(&parser), black_box(bytes.clone())))
+    });
 }
 
 criterion_group!(benches, criterion_benchmark);

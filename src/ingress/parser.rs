@@ -188,10 +188,22 @@ mod tests {
         assert_eq!(1, record_batch.num_rows());
         debug!("{:#?}", record_batch);
 
-        assert_eq!(StringArray::from(vec!["2021-04-07T05:33:41Z"]), *to_string_array(&record_batch, 0));
-        assert_eq!(StringArray::from(vec!["DEBUG"]), *to_string_array(&record_batch, 1));
-        assert_eq!(StringArray::from(vec!["log_gen"]), *to_string_array(&record_batch, 2));
-        assert_eq!(StringArray::from(vec!["    Its fleece was white as snow,"]), *to_string_array(&record_batch, 3));
+        assert_eq!(
+            StringArray::from(vec!["2021-04-07T05:33:41Z"]),
+            *to_string_array(&record_batch, 0)
+        );
+        assert_eq!(
+            StringArray::from(vec!["DEBUG"]),
+            *to_string_array(&record_batch, 1)
+        );
+        assert_eq!(
+            StringArray::from(vec!["log_gen"]),
+            *to_string_array(&record_batch, 2)
+        );
+        assert_eq!(
+            StringArray::from(vec!["    Its fleece was white as snow,"]),
+            *to_string_array(&record_batch, 3)
+        );
 
         Ok(())
     }
