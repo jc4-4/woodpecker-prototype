@@ -124,6 +124,10 @@ impl RegexParser {
         }
     }
 
+    pub fn schema(&self) -> SchemaRef {
+        self.schema.clone()
+    }
+
     fn columns(&self) -> usize {
         self.schema.fields().len()
     }
@@ -184,6 +188,10 @@ impl WhitespaceParser {
         builders[i]
             .append_value(from_utf8(rem).expect("Well-formed Utf8"))
             .expect("Append String: ");
+    }
+
+    pub fn schema(&self) -> SchemaRef {
+        self.schema.clone()
     }
 
     fn columns(&self) -> usize {
