@@ -5,56 +5,67 @@ use bytes::Bytes;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use log::{debug, error};
 use regex::bytes::Regex;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::str;
-use std::sync::Arc;
 use std::str::from_utf8;
+use std::sync::Arc;
 
 /// Parser splits log by line into events, then parse each event to fields with regex.
 pub struct RegexParser {
     regex: Regex,
+    schema: SchemaRef,
 }
 
 impl RegexParser {
-    pub fn new(regex: &str) -> Self {
+    pub fn new(regex_str: &str) -> Self {
+        let regex = Regex::new(regex_str).unwrap();
+        let fields = regex
+            .capture_names()
+            .flatten()
+            .map(|name| Field::new(name, DataType::Utf8, false))
+            .collect();
         Self {
-            regex: Regex::new(regex).unwrap(),
+            regex,
+            schema: Arc::new(Schema::new(fields)),
         }
     }
 
-    pub fn parse(&self, bytes: Bytes) -> Vec<HashMap<String, String>> {
-        let mut result = vec![];
+    pub fn parse(&self, bytes: Bytes) -> RecordBatch {
+        let cols = self.columns();
+        let mut builders: Vec<StringBuilder> = Vec::with_capacity(cols);
+        for _ in 0..cols {
+            builders.push(StringBuilder::new(10));
+        }
         for line in bytes.split(|&char| char == b'\n') {
             if line.is_empty() {
                 continue;
             }
-            result.push(self.parse_event(line));
+            self.parse_event(line, &mut builders);
         }
-        result
+
+        let mut arrays = Vec::with_capacity(cols);
+        for i in 0..cols {
+            let array_ref = Arc::new(builders[i].finish()) as ArrayRef;
+            arrays.push(array_ref);
+        }
+
+        RecordBatch::try_new(self.schema.clone(), arrays).unwrap()
     }
 
-    fn parse_event(&self, event: &[u8]) -> HashMap<String, String> {
-        let mut map = HashMap::new();
-        for caps in self.regex.captures_iter(event) {
-            for name in self.regex.capture_names() {
-                if let Some(name) = name {
-                    let cap = caps.name(name).unwrap();
-                    map.insert(
-                        name.to_string(),
-                        String::from_utf8_lossy(cap.as_bytes()).to_string(),
-                    );
-                }
+    fn parse_event(&self, event: &[u8], builders: &mut Vec<StringBuilder>) {
+        let caps = self.regex.captures(event).expect("Regex matches event");
+        for i in 0..builders.len() {
+            if let Some(m) = caps.name(self.schema.field(i).name()) {
+                builders[i]
+                    .append_value(std::str::from_utf8(m.as_bytes()).expect("Wellformed Utf8"))
+                    .expect("Append String");
             }
         }
-        if map.is_empty() {
-            panic!(
-                "Event does not match regex: {}",
-                String::from_utf8_lossy(event)
-            );
-        }
-        map
+    }
+
+    fn columns(&self) -> usize {
+        self.schema.fields().len()
     }
 }
 
@@ -162,6 +173,5 @@ fn whitespace_parser_benchmark(c: &mut Criterion) {
     group.finish();
 }
 
-// criterion_group!(benches, regex_parser_benchmark, whitespace_parser_benchmark);
-criterion_group!(benches, whitespace_parser_benchmark);
+criterion_group!(benches, regex_parser_benchmark, whitespace_parser_benchmark);
 criterion_main!(benches);
