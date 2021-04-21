@@ -56,3 +56,7 @@ harness = false
 [[bench]]
 name = "writer"
 harness = false
+
+[[bench]]
+name = "parser_writer"
+harness = false
