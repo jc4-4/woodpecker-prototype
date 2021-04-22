@@ -11,6 +11,7 @@ arrow = { version = "3.0", features = ["prettyprint"] }
 async-stream = "0.3"
 async-trait = "0.1"
 bytes = "1.0"
+chrono = "0.4"
 env_logger = "0.8"
 futures = "0.3"
 log = "0.4"
@@ -59,4 +60,8 @@ harness = false
 
 [[bench]]
 name = "parser_writer"
+harness = false
+
+[[bench]]
+name = "cast"
 harness = false

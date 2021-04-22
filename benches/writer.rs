@@ -1,9 +1,9 @@
 use bytes::Bytes;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use prototype::ingress::parser::RegexParser;
+use prototype::ingress::writer::Writer;
 use std::fs::File;
 use std::io::Read;
-use prototype::ingress::writer::Writer;
 
 fn read_testinput(file: &str) -> Bytes {
     let file = File::open(format!("{}{}", "./testinput/", file)).unwrap();

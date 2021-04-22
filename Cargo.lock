@@ -1538,6 +1538,7 @@ dependencies = [
  "async-stream",
  "async-trait",
  "bytes",
+ "chrono",
  "criterion",
  "env_logger",
  "futures",

@@ -1,9 +1,9 @@
 use bytes::Bytes;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use prototype::ingress::parser::{RegexParser, WhitespaceParser};
+use prototype::ingress::writer::Writer;
 use std::fs::File;
 use std::io::Read;
-use prototype::ingress::writer::Writer;
 
 fn read_testinput(file: &str) -> Bytes {
     let file = File::open(format!("{}{}", "./testinput/", file)).unwrap();
@@ -51,5 +51,9 @@ fn regex_parser_writer_benchmark(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, regex_parser_writer_benchmark, whitespace_parser_writer_benchmark);
+criterion_group!(
+    benches,
+    regex_parser_writer_benchmark,
+    whitespace_parser_writer_benchmark
+);
 criterion_main!(benches);
