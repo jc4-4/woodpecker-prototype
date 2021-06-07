@@ -24,15 +24,15 @@ pub enum WoodpeckerError {
     TonicError(tonic::transport::Error),
 }
 
-impl<T> Into<Result<T>> for WoodpeckerError {
-    fn into(self) -> Result<T> {
-        Err(self)
+impl<T> From<WoodpeckerError> for Result<T> {
+    fn from(e: WoodpeckerError) -> Self {
+        Err(e)
     }
 }
 
-impl Into<tonic::Status> for WoodpeckerError {
-    fn into(self) -> tonic::Status {
-        tonic::Status::new(tonic::Code::Internal, self.to_string())
+impl From<WoodpeckerError> for tonic::Status {
+    fn from(e: WoodpeckerError) -> Self {
+        tonic::Status::new(tonic::Code::Internal, e.to_string())
     }
 }
 

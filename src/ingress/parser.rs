@@ -105,8 +105,8 @@ impl RegexParser {
         }
 
         let mut arrays = Vec::with_capacity(cols);
-        for i in 0..cols {
-            let array_ref = Arc::new(builders[i].finish()) as ArrayRef;
+        for builder in builders.iter_mut().take(cols) {
+            let array_ref = Arc::new(builder.finish()) as ArrayRef;
             arrays.push(array_ref);
         }
 
@@ -115,9 +115,9 @@ impl RegexParser {
 
     fn parse_event(&self, event: &[u8], builders: &mut Vec<StringBuilder>) {
         let caps = self.regex.captures(event).expect("Regex matches event");
-        for i in 0..builders.len() {
+        for (i, builder) in builders.iter_mut().enumerate() {
             if let Some(m) = caps.name(self.schema.field(i).name()) {
-                builders[i]
+                builder
                     .append_value(std::str::from_utf8(m.as_bytes()).expect("Wellformed Utf8"))
                     .expect("Append String");
             }
@@ -163,8 +163,8 @@ impl WhitespaceParser {
         }
 
         let mut arrays = Vec::with_capacity(cols);
-        for i in 0..cols {
-            let array_ref = Arc::new(builders[i].finish()) as ArrayRef;
+        for builder in builders.iter_mut().take(cols) {
+            let array_ref = Arc::new(builder.finish()) as ArrayRef;
             arrays.push(array_ref);
         }
 
