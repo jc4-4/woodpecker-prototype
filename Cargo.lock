@@ -1700,6 +1700,7 @@ dependencies = [
  "serial_test",
  "tempfile",
  "tokio",
+ "tokio-stream",
  "tokio-test",
  "tonic",
  "tonic-build",
