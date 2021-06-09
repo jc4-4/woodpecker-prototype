@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
+    use crate::query::forked::parquet_table::ParquetTable;
     use arrow::record_batch::RecordBatch;
     use arrow::util::pretty::pretty_format_batches;
     use datafusion::prelude::*;
-    use crate::query::forked::parquet_table::ParquetTable;
     use std::sync::Arc;
 
     fn init() {
@@ -24,7 +24,8 @@ mod tests {
         ctx.register_table("example", Arc::new(table));
 
         // create a plan to run a SQL query
-        let df = ctx.sql("SELECT a, MIN(b), COUNT(*) FROM example GROUP BY a ORDER BY a LIMIT 100")?;
+        let df =
+            ctx.sql("SELECT a, MIN(b), COUNT(*) FROM example GROUP BY a ORDER BY a LIMIT 100")?;
 
         // execute and print results
         let results: Vec<RecordBatch> = df.collect().await?;
