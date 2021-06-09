@@ -19,22 +19,23 @@ mod tests {
         //   csv2parquet testinput/example.csv testinput/example.parquet
         // You can verify its content by the command
         //   parquet-tools show testinput/example.parquet
-        let table = ParquetTable::try_new("testinput/example.parquet", 1)?;
+        // If you specify a folder, it will group all .parquet files in the folder under one table.
+        let table = ParquetTable::try_new("testinput", 1)?;
         ctx.register_table("example", Arc::new(table));
 
         // create a plan to run a SQL query
-        let df = ctx.sql("SELECT a, MIN(b) FROM example GROUP BY a ORDER BY a LIMIT 100")?;
+        let df = ctx.sql("SELECT a, MIN(b), COUNT(*) FROM example GROUP BY a ORDER BY a LIMIT 100")?;
 
         // execute and print results
         let results: Vec<RecordBatch> = df.collect().await?;
         assert_eq!(
             pretty_format_batches(&results)?,
-            "+---+--------+\n\
-            | a | MIN(b) |\n\
-            +---+--------+\n\
-            | 1 | a      |\n\
-            | a | 1      |\n\
-            +---+--------+\n"
+            "+---+--------+-----------------+\n\
+            | a | MIN(b) | COUNT(UInt8(1)) |\n\
+            +---+--------+-----------------+\n\
+            | 1 | a      | 3               |\n\
+            | a | 1      | 3               |\n\
+            +---+--------+-----------------+\n"
         );
         Ok(())
     }
