@@ -3,6 +3,8 @@ mod tests {
     use arrow::record_batch::RecordBatch;
     use arrow::util::pretty::pretty_format_batches;
     use datafusion::prelude::*;
+    use crate::query::forked::parquet_table::ParquetTable;
+    use std::sync::Arc;
 
     fn init() {
         let _ = env_logger::builder().is_test(true).try_init();
@@ -17,7 +19,8 @@ mod tests {
         //   csv2parquet testinput/example.csv testinput/example.parquet
         // You can verify its content by the command
         //   parquet-tools show testinput/example.parquet
-        ctx.register_parquet("example", "testinput/example.parquet")?;
+        let table = ParquetTable::try_new("testinput/example.parquet", 1)?;
+        ctx.register_table("example", Arc::new(table));
 
         // create a plan to run a SQL query
         let df = ctx.sql("SELECT a, MIN(b) FROM example GROUP BY a ORDER BY a LIMIT 100")?;
